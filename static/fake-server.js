@@ -6,52 +6,195 @@
  * server.py. On GH Pages there's no server, so we monkey-patch window.fetch
  * to intercept those paths and compute the response locally in JS.
  *
- * Kept as a straight port of server.py's math — same KB-cited constants,
- * same status_for thresholds, same green/yellow/red banding. If you tweak
- * numbers in server.py, mirror them here.
+ * v0.4 — Season-agnostic refactor:
+ *   - Burn rates are no longer hardcoded. At boot we call LWSSeasons.loadAll()
+ *     and read S2's mechanics_config for the AF (Alliance Furnace) and HHF
+ *     (High-Heat / personal Home Heating Furnace) coal-per-min anchors:
+ *       af_coal_per_min_l20.{normal,overdrive}
+ *       hhf_coal_per_min_l30_approx.{normal,overdrive}
+ *   - Overdrive multiplier is derived from the ratio, not hardcoded.
+ *   - For non-S2 seasons we short-circuit /api/coal/* with an "inactive" result
+ *     so the UI can render a "Coal doesn't apply this season" placeholder.
+ *   - We listen for `lws:season-changed` and reset the cache so the next fetch
+ *     picks up new context.
  */
 (function () {
   'use strict';
 
-  // ---- KB-sourced constants (mirror server.py) ----
-  // KB: [[06-season-2-frozen]] "Overdrive coal burn ~= 4x Normal"
-  const OVERDRIVE_MULTIPLIER = 4;
-  // v0.1 placeholder — TODO: KB gap, verify in-game
-  const PERSONAL_BURN_L1_NORMAL = 30;   // coal/min
-  const PERSONAL_BURN_L30_NORMAL = 450; // coal/min
-  const SAFE_BUFFER_RATIO = 0.20;
+  // ---- Season-derived config cache ----
+  // Populated by loadSeasonConfig(); kept per-season-id so a season override
+  // doesn't force a re-fetch on every request.
+  var _cfgCache = {};      // seasonId -> { active, hhfL30Normal, hhfL1Normal, overdriveMul, seasonName, primaryResource }
+  var _currentCtx = null;  // last resolved { seasonId, season }
+  var _readyPromise = null;
 
-  function personalBurnRate(level, overdrive) {
-    const lvl = Math.max(1, Math.min(30, parseInt(level, 10) || 1));
-    const frac = (lvl - 1) / 29;
-    const normal = PERSONAL_BURN_L1_NORMAL + frac * (PERSONAL_BURN_L30_NORMAL - PERSONAL_BURN_L1_NORMAL);
-    return overdrive ? normal * OVERDRIVE_MULTIPLIER : normal;
+  // Fallback anchors (used only if LWSSeasons is missing at boot — matches
+  // the pre-refactor placeholders in server.py so behavior is unchanged when
+  // the seasons lib fails to load).
+  var FALLBACK_HHF_L1_NORMAL = 30;      // coal/min at L1
+  var FALLBACK_HHF_L30_NORMAL = 450;    // coal/min at L30
+  var FALLBACK_OVERDRIVE_MUL = 4;       // KB: [[06-season-2-frozen]]
+  var SAFE_BUFFER_RATIO = 0.20;
+
+  // Per-season "primary resource that replaces coal" — read from mechanics_config
+  // where possible, else falls back to this map so the placeholder message
+  // reads naturally.
+  var SEASON_PRIMARY_RESOURCE = {
+    's1-crimson-plague': 'Virus Tokens',
+    's3-golden-kingdom': 'Spice',
+    's4-evernight-isle': 'Copper',
+    's5-wild-west': 'CrystalGold',
+    's6-shadow-rainforest': 'Fungus / Spores',
+    's7-unnamed': 'TBD',
+    'pre-season': 'n/a',
+    'off-season': 'n/a',
+  };
+
+  function inferPrimaryResource(seasonId, mc) {
+    // Direct-key preference so KB updates can override the fallback table.
+    if (mc && (mc.primary_resource || mc.resource)) return mc.primary_resource || mc.resource;
+    return SEASON_PRIMARY_RESOURCE[seasonId] || 'the season resource';
   }
 
-  function coalNeeded(level, durationHours, overdrive) {
-    return Math.round(personalBurnRate(level, overdrive) * 60 * parseFloat(durationHours));
+  function buildS2Config(mc, seasonName) {
+    // S2 Polar Storm — coal is the primary resource.
+    // Anchor the personal-furnace L30 normal burn to HHF, then linearly
+    // interpolate down to a "small" L1 anchor. We keep the ratio between
+    // L1 and L30 the same as the historical placeholder (30 / 450 = 1/15)
+    // so behavior at L1 is stable while the L30 value scales with KB updates.
+    var hhf = (mc && mc.hhf_coal_per_min_l30_approx) || {};
+    var hhfL30Normal = Number(hhf.normal) || FALLBACK_HHF_L30_NORMAL;
+    var hhfL30Over = Number(hhf.overdrive) || (hhfL30Normal * FALLBACK_OVERDRIVE_MUL);
+    var overdriveMul = hhfL30Normal > 0 ? (hhfL30Over / hhfL30Normal) : FALLBACK_OVERDRIVE_MUL;
+    // Preserve historical L1/L30 shape (1:15) unless KB later publishes an L1.
+    var hhfL1Normal = hhfL30Normal / 15.0;
+    return {
+      active: true,
+      seasonName: seasonName,
+      hhfL1Normal: hhfL1Normal,
+      hhfL30Normal: hhfL30Normal,
+      overdriveMul: overdriveMul,
+      primaryResource: 'Coal',
+    };
+  }
+
+  function buildInactiveConfig(seasonId, mc, seasonName) {
+    return {
+      active: false,
+      seasonName: seasonName,
+      primaryResource: inferPrimaryResource(seasonId, mc || {}),
+    };
+  }
+
+  function loadSeasonConfig() {
+    if (_readyPromise) return _readyPromise;
+    if (!window.LWSSeasons || typeof window.LWSSeasons.resolve !== 'function') {
+      // Seasons lib not present — fall back to fixed S2 behavior.
+      _currentCtx = { seasonId: 's2-polar-storm', season: null };
+      _cfgCache['s2-polar-storm'] = {
+        active: true,
+        seasonName: 'Season 2: Polar Storm',
+        hhfL1Normal: FALLBACK_HHF_L1_NORMAL,
+        hhfL30Normal: FALLBACK_HHF_L30_NORMAL,
+        overdriveMul: FALLBACK_OVERDRIVE_MUL,
+        primaryResource: 'Coal',
+      };
+      _readyPromise = Promise.resolve(_cfgCache['s2-polar-storm']);
+      return _readyPromise;
+    }
+    _readyPromise = window.LWSSeasons.resolve().then(function (ctx) {
+      _currentCtx = { seasonId: ctx.season_id, season: ctx.season };
+      var seasonName = (ctx.season && ctx.season.name && ctx.season.name.en) || ctx.season_id;
+      return window.LWSSeasons.getMechanicsConfig(ctx.season_id).then(function (mc) {
+        var cfg = (ctx.season_id === 's2-polar-storm')
+          ? buildS2Config(mc, seasonName)
+          : buildInactiveConfig(ctx.season_id, mc, seasonName);
+        _cfgCache[ctx.season_id] = cfg;
+        return cfg;
+      });
+    }).catch(function () {
+      // Any failure → assume S2 default with placeholders. Better than a
+      // dead calculator.
+      _cfgCache['s2-polar-storm'] = {
+        active: true,
+        seasonName: 'Season 2: Polar Storm',
+        hhfL1Normal: FALLBACK_HHF_L1_NORMAL,
+        hhfL30Normal: FALLBACK_HHF_L30_NORMAL,
+        overdriveMul: FALLBACK_OVERDRIVE_MUL,
+        primaryResource: 'Coal',
+      };
+      _currentCtx = { seasonId: 's2-polar-storm', season: null };
+      return _cfgCache['s2-polar-storm'];
+    });
+    return _readyPromise;
+  }
+
+  // Invalidate when the LWSSeasons layer fires a change event.
+  window.addEventListener('lws:season-changed', function () {
+    _readyPromise = null;
+    _cfgCache = {};
+    _currentCtx = null;
+  });
+
+  // ---- Core math (now takes cfg as an argument) ----
+
+  function personalBurnRate(cfg, level, overdrive) {
+    var lvl = Math.max(1, Math.min(30, parseInt(level, 10) || 1));
+    var frac = (lvl - 1) / 29;
+    var normal = cfg.hhfL1Normal + frac * (cfg.hhfL30Normal - cfg.hhfL1Normal);
+    return overdrive ? normal * cfg.overdriveMul : normal;
+  }
+
+  function coalNeeded(cfg, level, durationHours, overdrive) {
+    return Math.round(personalBurnRate(cfg, level, overdrive) * 60 * parseFloat(durationHours));
   }
 
   function statusFor(need, stock) {
     if (need <= 0) return 'green';
-    const ratio = (stock - need) / need;
+    var ratio = (stock - need) / need;
     if (ratio >= SAFE_BUFFER_RATIO) return 'green';
     if (ratio >= 0) return 'yellow';
     return 'red';
   }
 
-  function evaluateSingle(furnaceLevel, coalStock, durationHours, overdrive) {
-    const lvl = parseInt(furnaceLevel, 10);
-    const stock = parseInt(coalStock, 10);
-    const hrs = parseFloat(durationHours);
-    const od = !!overdrive;
-    const need = coalNeeded(lvl, hrs, od);
+  function inactiveResult(cfg) {
+    // Shape matches the "green" active response so the UI's renderer doesn't
+    // NPE — but flagged with season_active:false so the client can swap in a
+    // placeholder card.
     return {
+      season_active: false,
+      season_id: (_currentCtx && _currentCtx.seasonId) || null,
+      season_name: cfg.seasonName,
+      primary_resource: cfg.primaryResource,
+      message: 'Coal burn only applies during Season 2 Polar Storm — this season uses ' + cfg.primaryResource + '.',
+      furnace_level: 0,
+      coal_stock: 0,
+      duration_hours: 0,
+      overdrive: false,
+      burn_per_min: 0,
+      coal_needed: 0,
+      delta: 0,
+      status: 'green',
+      estimate: false,
+    };
+  }
+
+  function evaluateSingle(cfg, furnaceLevel, coalStock, durationHours, overdrive) {
+    if (!cfg.active) return inactiveResult(cfg);
+    var lvl = parseInt(furnaceLevel, 10);
+    var stock = parseInt(coalStock, 10);
+    var hrs = parseFloat(durationHours);
+    var od = !!overdrive;
+    var need = coalNeeded(cfg, lvl, hrs, od);
+    return {
+      season_active: true,
+      season_id: (_currentCtx && _currentCtx.seasonId) || 's2-polar-storm',
+      season_name: cfg.seasonName,
       furnace_level: lvl,
       coal_stock: stock,
       duration_hours: hrs,
       overdrive: od,
-      burn_per_min: Math.round(personalBurnRate(lvl, od) * 10) / 10,
+      burn_per_min: Math.round(personalBurnRate(cfg, lvl, od) * 10) / 10,
       coal_needed: need,
       delta: stock - need,
       status: statusFor(need, stock),
@@ -59,30 +202,42 @@
     };
   }
 
-  function evaluateBatch(members, durationHours, overdrive) {
-    const results = [];
-    let shortCount = 0;
-    let totalDeficit = 0;
-    for (const m of members || []) {
+  function evaluateBatch(cfg, members, durationHours, overdrive) {
+    if (!cfg.active) {
+      return {
+        season_active: false,
+        season_id: (_currentCtx && _currentCtx.seasonId) || null,
+        season_name: cfg.seasonName,
+        primary_resource: cfg.primaryResource,
+        message: 'Coal burn only applies during Season 2 Polar Storm — this season uses ' + cfg.primaryResource + '.',
+        results: [],
+        summary: {
+          season_active: false,
+          member_count: 0, short_count: 0, total_deficit: 0,
+          duration_hours: parseFloat(durationHours) || 0,
+          overdrive: !!overdrive,
+        },
+      };
+    }
+    var results = [];
+    var shortCount = 0;
+    var totalDeficit = 0;
+    (members || []).forEach(function (m) {
       try {
-        const row = evaluateSingle(
-          m.furnace_level || 1,
-          m.coal_stock || 0,
-          durationHours,
-          overdrive
-        );
+        var row = evaluateSingle(cfg, m.furnace_level || 1, m.coal_stock || 0, durationHours, overdrive);
         row.name = m.name || '';
         row.rank = m.rank || '';
-        if (row.delta < 0) {
-          shortCount++;
-          totalDeficit += -row.delta;
-        }
+        if (row.delta < 0) { shortCount++; totalDeficit += -row.delta; }
         results.push(row);
       } catch (e) { /* skip malformed row */ }
-    }
+    });
     return {
-      results,
+      season_active: true,
+      season_id: (_currentCtx && _currentCtx.seasonId) || 's2-polar-storm',
+      season_name: cfg.seasonName,
+      results: results,
       summary: {
+        season_active: true,
         member_count: results.length,
         short_count: shortCount,
         total_deficit: totalDeficit,
@@ -93,25 +248,34 @@
   }
 
   // ---- fetch monkey-patch ----
-  const realFetch = window.fetch.bind(window);
+  var realFetch = window.fetch.bind(window);
 
   window.fetch = async function (input, init) {
-    let url = typeof input === 'string' ? input : input.url;
-    // Only intercept /api/coal/* paths — everything else falls through to real fetch
+    var url = typeof input === 'string' ? input : input.url;
     if (!url.startsWith('/api/coal/')) {
       return realFetch(input, init);
     }
-    let body = {};
+    var body = {};
     if (init && init.body) {
       try { body = JSON.parse(init.body); } catch (e) {}
     }
-    let result;
+    var cfg = await loadSeasonConfig();
+    var result;
     if (url === '/api/coal/single') {
-      result = evaluateSingle(body.furnace_level, body.coal_stock, body.duration_hours, body.overdrive);
+      result = evaluateSingle(cfg, body.furnace_level, body.coal_stock, body.duration_hours, body.overdrive);
     } else if (url === '/api/coal/batch') {
-      result = evaluateBatch(body.members, body.duration_hours, body.overdrive);
+      result = evaluateBatch(cfg, body.members, body.duration_hours, body.overdrive);
+    } else if (url === '/api/coal/context') {
+      // New helper — the UI polls this to decide whether to show the "inactive
+      // season" banner. Not present on the Python server, but a static-only
+      // affordance is fine since it's read-only + derived from public data.
+      result = {
+        season_active: cfg.active,
+        season_id: (_currentCtx && _currentCtx.seasonId) || null,
+        season_name: cfg.seasonName,
+        primary_resource: cfg.primaryResource,
+      };
     } else {
-      // Unknown /api/coal/* — return 404-shaped
       return new Response(JSON.stringify({ error: 'endpoint not found in static build' }), {
         status: 404, headers: { 'Content-Type': 'application/json' }
       });
@@ -122,5 +286,14 @@
   };
 
   // Optional: expose the pure functions for debugging in devtools console
-  window.__CoalBurn = { personalBurnRate, coalNeeded, statusFor, evaluateSingle, evaluateBatch };
+  window.__CoalBurn = {
+    personalBurnRate: function (level, overdrive) {
+      return loadSeasonConfig().then(function (cfg) {
+        return cfg.active ? personalBurnRate(cfg, level, overdrive) : 0;
+      });
+    },
+    loadSeasonConfig: loadSeasonConfig,
+    getCurrentContext: function () { return _currentCtx; },
+    statusFor: statusFor,
+  };
 })();

@@ -43,6 +43,15 @@
         </p>
       </div>
 
+      <!-- ============ Season-inactive banner (shown when current warzone
+           is NOT running Season 2). Populated from /api/coal/context and
+           refreshed on `lws:season-changed`. -->
+      <div class="card" id="season-inactive-banner" style="display:none;border:1px solid rgba(201,169,97,0.4);background:linear-gradient(180deg,#1a1408,#12100a)">
+        <h2 style="color:#c9a961" data-i18n="inactiveHeading">Coal burn doesn't apply this season</h2>
+        <p class="lede" id="season-inactive-message">—</p>
+        <p class="hint" data-i18n="inactiveHint">Switch the warzone selector above to a warzone running Season 2 Polar Storm, or use the <em>change</em> link to override the season for planning.</p>
+      </div>
+
       <!-- ============ Single-member card ============ -->
       <div class="card">
         <h2 data-i18n="singleHeading">Single member</h2>
@@ -156,6 +165,13 @@
     }
   </script>
 
+  <!-- ============ LWS_Seasons client library ============
+       Loaded BEFORE fake-server.js so the /api/coal/* interceptor can read the
+       per-season mechanics_config (AF + HHF coal-per-min anchors) instead of
+       hardcoded S2 values. Also renders the warzone selector into
+       #lws-warzone-selector. -->
+  <script src="static/seasons-lib.js"></script>
+
   <!-- ============ fake-server (GH Pages static build only — intercepts /api/coal/*) ============ -->
   <script src="static/fake-server.js"></script>
 
@@ -178,6 +194,53 @@
 
     var currentSingleResult = null;
     var currentBatchResult = null;
+
+    // --- Season-context banner ---------------------------------------------
+    // Coal burn is a Season-2-only mechanic. For any other season we show
+    // an "inactive" placeholder and disable the calc buttons.
+    var mainApp = document.getElementById('main-app');
+    var seasonBanner = document.getElementById('season-inactive-banner');
+    var seasonMsg = document.getElementById('season-inactive-message');
+
+    function applySeasonContext(ctx) {
+      var isActive = !!(ctx && ctx.season_active);
+      if (isActive) {
+        seasonBanner.style.display = 'none';
+        // Un-disable the primary action buttons that were locked by a prior
+        // non-S2 context.
+        document.getElementById('s-calc').disabled = false;
+        document.getElementById('b-run').disabled = false;
+      } else {
+        var resource = (ctx && ctx.primary_resource) || 'the season resource';
+        var seasonName = (ctx && ctx.season_name) || (ctx && ctx.season_id) || 'this season';
+        seasonMsg.textContent = 'Coal burn only applies during Season 2 Polar Storm — '
+          + seasonName + ' uses ' + resource + '.';
+        seasonBanner.style.display = '';
+        document.getElementById('s-calc').disabled = true;
+        document.getElementById('b-run').disabled = true;
+        // Wipe any stale result panels so the user isn't left with S2 numbers
+        // that no longer apply.
+        sResult.classList.remove('on');
+        bTable.style.display = 'none';
+        bSummary.classList.remove('on');
+        currentSingleResult = null;
+        currentBatchResult = null;
+      }
+    }
+
+    function refreshSeasonContext() {
+      fetch('/api/coal/context')
+        .then(function (r) { return r.json(); })
+        .then(applySeasonContext)
+        .catch(function () { /* no-op — assume S2 default */ });
+    }
+
+    // Re-render whenever the LWSSeasons layer publishes a change (warzone
+    // switch or season override via the selector strip).
+    window.addEventListener('lws:season-changed', refreshSeasonContext);
+    window.addEventListener('lws:warzone-changed', refreshSeasonContext);
+    // Initial check once the page + fake-server are wired.
+    refreshSeasonContext();
 
     // --- Single mode ---------------------------------------------------------
 
@@ -515,6 +578,5 @@
     }
   })();
   </script>
-  <script src="static/seasons-lib.js" defer></script>
 </body>
 </html>

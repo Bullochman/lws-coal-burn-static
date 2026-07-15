@@ -76,6 +76,10 @@
       summaryDeficit: 'Total deficit:',
       summaryReady: 'Every listed member has enough coal.',
 
+      // Season-inactive banner
+      inactiveHeading: "Coal burn doesn't apply this season",
+      inactiveHint: 'Switch the warzone selector above to a warzone running Season 2 Polar Storm, or use the change link to override the season for planning.',
+
       // Errors
       errFurnaceRange: 'Furnace level must be 1–30.',
       errCoalNegative: 'Coal stockpile cannot be negative.',
@@ -148,6 +152,10 @@
       summaryShort: '명이 부족',
       summaryDeficit: '총 부족량:',
       summaryReady: '모든 멤버의 석탄이 충분합니다.',
+
+      // Season-inactive banner
+      inactiveHeading: '이번 시즌에는 석탄 소모 계산이 적용되지 않습니다',
+      inactiveHint: '위 전쟁구역 선택기를 시즌 2 폴라 스톰이 진행 중인 전쟁구역으로 전환하거나, "change" 링크로 시즌 오버라이드를 지정해 계획을 세우세요.',
 
       // Errors
       errFurnaceRange: '화로 레벨은 1–30 사이여야 합니다.',
