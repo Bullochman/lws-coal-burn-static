@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title data-i18n="title">Coal Burn Calculator — LWS Suite</title>
+  <meta name="description" content="Season 2 -70 °C blizzard coal-budget calculator for Last War: Survival alliances." />
+  <link rel="stylesheet" href="static/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">R5TOOLS.IO <span class="brand-sub" data-i18n="brandSub">LWS Suite</span></div>
+      <button class="lang-toggle" id="langToggle" data-i18n="langToggle">한국어</button>
+    </header>
+
+    <!-- Everything the user can see AND use lives inside #main-app so the
+         LWSAccessCodes gate can wrap it in a lock overlay if they don't have
+         a valid unlock cookie. See LWS_Access_Codes/docs/integration.md. -->
+    <div id="main-app">
+
+      <div class="card">
+        <h1 data-i18n="title">Coal Burn Calculator</h1>
+        <p class="lede" data-i18n="lede">
+          How much Coal does every member need stockpiled to survive the Week-4 -70 °C blizzard with the High-Heat Furnace in Overdrive for the full 3-hour window?
+        </p>
+      </div>
+
+      <!-- ============ Single-member card ============ -->
+      <div class="card">
+        <h2 data-i18n="singleHeading">Single member</h2>
+        <p class="lede" data-i18n="singleDesc">Enter your High-Heat Furnace level and current coal.</p>
+
+        <div class="form-row">
+          <div class="field">
+            <label data-i18n="furnaceLevel">Furnace level</label>
+            <input type="number" id="s-level" min="1" max="30" value="20" />
+            <div class="hint" data-i18n="furnaceLevelHint">1 – 30</div>
+          </div>
+          <div class="field">
+            <label data-i18n="coalStock">Coal in stock</label>
+            <input type="number" id="s-stock" min="0" step="1000" value="100000" />
+            <div class="hint" data-i18n="coalStockHint">Your current stockpile</div>
+          </div>
+          <div class="field">
+            <label data-i18n="duration">Blizzard duration (hours)</label>
+            <input type="number" id="s-hours" min="0.1" step="0.5" value="3" />
+            <div class="hint" data-i18n="durationHint">Default 3 (Week 1-4+)</div>
+          </div>
+          <div class="field">
+            <label data-i18n="blizzardDrop">Blizzard drop (°C)</label>
+            <select id="s-drop">
+              <option value="-30">-30 (W1-2)</option>
+              <option value="-50">-50 (W3)</option>
+              <option value="-70" selected>-70 (W4+)</option>
+            </select>
+            <div class="hint" data-i18n="blizzardDropHint">W1-2: -30 · W3: -50 · W4+: -70</div>
+          </div>
+        </div>
+
+        <label class="checkbox">
+          <input type="checkbox" id="s-overdrive" checked />
+          <span data-i18n="overdrive">Overdrive (4× burn)</span>
+          <span class="hint" style="margin-left:auto" data-i18n="overdriveHint">Recommended for -70 °C</span>
+        </label>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="s-calc" data-i18n="calculate">Calculate</button>
+          <button class="btn btn-secondary" id="s-reset" data-i18n="reset">Reset</button>
+        </div>
+
+        <div class="result" id="s-result">
+          <div class="verdict" id="s-verdict">—</div>
+          <dl>
+            <dt data-i18n="resFurnaceLevel">Furnace level</dt><dd class="mono" id="s-r-level">—</dd>
+            <dt data-i18n="resBurnPerMin">Burn rate</dt><dd class="mono" id="s-r-burn">— <span data-i18n="unitPerMin">coal / min</span> <span class="badge-estimate" data-i18n="estimate">± estimate</span></dd>
+            <dt data-i18n="resNeed">Coal needed</dt><dd class="mono" id="s-r-need">— <span data-i18n="unitCoal">coal</span></dd>
+            <dt data-i18n="resStock">You have</dt><dd class="mono" id="s-r-stock">— <span data-i18n="unitCoal">coal</span></dd>
+            <dt data-i18n="resDelta">Delta</dt><dd class="mono" id="s-r-delta">— <span data-i18n="unitCoal">coal</span></dd>
+          </dl>
+          <p class="hint" style="margin-top:16px" data-i18n="estimateNote">Per-level burn rate L2–L29 is not yet KB-verified.</p>
+        </div>
+      </div>
+
+      <!-- ============ Batch card ============ -->
+      <div class="card">
+        <h2 data-i18n="batchHeading">Batch (R5 mode)</h2>
+        <p class="lede" data-i18n="batchDesc">Paste your alliance roster CSV.</p>
+
+        <textarea class="batch-textarea" id="b-input"
+          data-i18n-placeholder="batchPlaceholder"
+          placeholder="name,rank,hq_level,total_power,notes,furnace_level,coal_stock&#10;..."></textarea>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="b-run" data-i18n="batchRun">Run batch</button>
+          <button class="btn btn-secondary" id="b-csv" data-i18n="batchExportCsv" disabled>Export CSV</button>
+          <button class="btn btn-secondary" id="b-png" data-i18n="batchExportPng" disabled>Export PNG</button>
+          <button class="btn btn-secondary" id="b-help" data-i18n="batchExportHelp" disabled>Alliance-help text</button>
+        </div>
+
+        <div class="summary" id="b-summary"></div>
+
+        <div class="batch-table-wrap">
+          <table class="batch" id="b-table" style="display:none">
+            <thead>
+              <tr>
+                <th data-i18n="colName">Name</th>
+                <th data-i18n="colRank">Rank</th>
+                <th class="num" data-i18n="colLevel">Furnace</th>
+                <th class="num" data-i18n="colStock">Stock</th>
+                <th class="num" data-i18n="colNeed">Need</th>
+                <th class="num" data-i18n="colDelta">Delta</th>
+                <th data-i18n="colStatus">Status</th>
+              </tr>
+            </thead>
+            <tbody id="b-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /#main-app -->
+
+    <footer>
+      <a href="https://r5tools.io" target="_blank" data-i18n="footerHome">r5tools.io</a>
+      ·
+      <span data-i18n="footerCred">Powered by the LWS Knowledge Base</span>
+    </footer>
+  </div>
+
+  <!-- ============ Access-Codes gate ============
+       Wraps #main-app in an unlock overlay if the visitor doesn't have a valid
+       lws_unlock_code cookie. `__ACCESS_CODES_URL__` is replaced server-side
+       from the ACCESS_CODES_URL env var so local dev can point at a local
+       codes server. -->
+  <script src="__ACCESS_CODES_URL__/lib.js"></script>
+  <script>
+    if (window.LWSAccessCodes && typeof LWSAccessCodes.gate === 'function') {
+      LWSAccessCodes.gate('main-app');
+    }
+  </script>
+
+  <!-- ============ fake-server (GH Pages static build only — intercepts /api/coal/*) ============ -->
+  <script src="static/fake-server.js"></script>
+
+  <!-- ============ i18n runtime ============ -->
+  <script src="static/i18n.js"></script>
+
+  <!-- ============ App logic (scaffold — real formatters + exports land in v0.2) ============ -->
+  <script>
+  (function () {
+    'use strict';
+
+    // Apply initial i18n + wire the language toggle.
+    LWSI18N.apply();
+    document.getElementById('langToggle').addEventListener('click', function () {
+      LWSI18N.toggle();
+      // Also refresh the current result panel's verdict text if it's showing.
+      if (currentSingleResult) renderSingle(currentSingleResult);
+      if (currentBatchResult) renderBatch(currentBatchResult);
+    });
+
+    var currentSingleResult = null;
+    var currentBatchResult = null;
+
+    // --- Single mode ---------------------------------------------------------
+
+    var sLevel = document.getElementById('s-level');
+    var sStock = document.getElementById('s-stock');
+    var sHours = document.getElementById('s-hours');
+    var sDrop = document.getElementById('s-drop');
+    var sOverdrive = document.getElementById('s-overdrive');
+    var sResult = document.getElementById('s-result');
+    var sVerdict = document.getElementById('s-verdict');
+
+    document.getElementById('s-calc').addEventListener('click', function () {
+      var payload = {
+        furnace_level: parseInt(sLevel.value, 10),
+        coal_stock: parseInt(sStock.value, 10),
+        duration_hours: parseFloat(sHours.value),
+        overdrive: sOverdrive.checked,
+      };
+      fetch('/api/coal/single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.error) { alert(LWSI18N.t('errNetwork') + ' (' + data.error + ')'); return; }
+          currentSingleResult = data;
+          renderSingle(data);
+        })
+        .catch(function () { alert(LWSI18N.t('errNetwork')); });
+    });
+
+    document.getElementById('s-reset').addEventListener('click', function () {
+      sLevel.value = 20; sStock.value = 100000; sHours.value = 3;
+      sDrop.value = '-70'; sOverdrive.checked = true;
+      sResult.classList.remove('on');
+      currentSingleResult = null;
+    });
+
+    function renderSingle(data) {
+      var vKey = data.status === 'green' ? 'verdictGreen' : (data.status === 'yellow' ? 'verdictYellow' : 'verdictRed');
+      sVerdict.textContent = LWSI18N.t(vKey);
+      sVerdict.className = 'verdict status-' + data.status;
+      sResult.className = 'result on status-' + data.status;
+      document.getElementById('s-r-level').firstChild.data = String(data.furnace_level);
+      document.getElementById('s-r-burn').firstChild.data = String(data.burn_per_min) + ' ';
+      document.getElementById('s-r-need').firstChild.data = data.coal_needed.toLocaleString() + ' ';
+      document.getElementById('s-r-stock').firstChild.data = data.coal_stock.toLocaleString() + ' ';
+      var deltaSign = data.delta >= 0 ? '+' : '';
+      document.getElementById('s-r-delta').firstChild.data = deltaSign + data.delta.toLocaleString() + ' ';
+    }
+
+    // --- Batch mode ----------------------------------------------------------
+
+    var bInput = document.getElementById('b-input');
+    var bTable = document.getElementById('b-table');
+    var bTbody = document.getElementById('b-tbody');
+    var bSummary = document.getElementById('b-summary');
+    var bCsv = document.getElementById('b-csv');
+    var bPng = document.getElementById('b-png');
+    var bHelp = document.getElementById('b-help');
+
+    document.getElementById('b-run').addEventListener('click', function () {
+      var text = (bInput.value || '').trim();
+      if (!text) { alert(LWSI18N.t('errBatchEmpty')); return; }
+      var members;
+      try {
+        members = parseCsv(text);
+      } catch (e) {
+        alert(LWSI18N.t('errBatchHeaders'));
+        return;
+      }
+      var payload = {
+        members: members,
+        duration_hours: parseFloat(sHours.value) || 3,
+        overdrive: sOverdrive.checked,
+      };
+      fetch('/api/coal/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.error) { alert(LWSI18N.t('errNetwork') + ' (' + data.error + ')'); return; }
+          currentBatchResult = data;
+          renderBatch(data);
+          bCsv.disabled = false; bPng.disabled = false; bHelp.disabled = false;
+        })
+        .catch(function () { alert(LWSI18N.t('errNetwork')); });
+    });
+
+    function parseCsv(text) {
+      // Minimal CSV parse: comma-split, no quoted-field support (v0.1).
+      // Same column contract as Alliance_Hive_Grid_Manager plus furnace_level + coal_stock.
+      var lines = text.split(/\r?\n/).filter(function (l) { return l.trim().length > 0; });
+      if (lines.length < 2) throw new Error('empty');
+      var headers = lines[0].split(',').map(function (s) { return s.trim(); });
+      var req = ['name', 'furnace_level', 'coal_stock'];
+      for (var i = 0; i < req.length; i++) {
+        if (headers.indexOf(req[i]) === -1) throw new Error('missing_' + req[i]);
+      }
+      var rows = [];
+      for (var r = 1; r < lines.length; r++) {
+        var cells = lines[r].split(',');
+        var row = {};
+        for (var c = 0; c < headers.length; c++) {
+          row[headers[c]] = (cells[c] || '').trim();
+        }
+        // Coerce numeric fields
+        row.furnace_level = parseInt(row.furnace_level, 10) || 1;
+        row.coal_stock = parseInt(row.coal_stock, 10) || 0;
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function renderBatch(data) {
+      bTbody.innerHTML = '';
+      data.results.forEach(function (r) {
+        var tr = document.createElement('tr');
+        tr.className = 'status-' + r.status;
+        tr.innerHTML = ''
+          + '<td>' + escapeHtml(r.name || '') + '</td>'
+          + '<td>' + escapeHtml(r.rank || '') + '</td>'
+          + '<td class="num">' + r.furnace_level + '</td>'
+          + '<td class="num">' + r.coal_stock.toLocaleString() + '</td>'
+          + '<td class="num">' + r.coal_needed.toLocaleString() + '</td>'
+          + '<td class="num">' + (r.delta >= 0 ? '+' : '') + r.delta.toLocaleString() + '</td>'
+          + '<td class="status-cell">' + r.status.toUpperCase() + '</td>';
+        bTbody.appendChild(tr);
+      });
+      bTable.style.display = data.results.length ? '' : 'none';
+
+      var s = data.summary;
+      if (s.short_count === 0) {
+        bSummary.innerHTML = '<strong>' + s.member_count + '</strong> ' + LWSI18N.t('summaryOf') + ' ' + s.member_count + ' — ' + LWSI18N.t('summaryReady');
+      } else {
+        bSummary.innerHTML = '<strong>' + s.short_count + '</strong> ' + LWSI18N.t('summaryOf') + ' <strong>' + s.member_count + '</strong> ' + LWSI18N.t('summaryShort') + ' · ' + LWSI18N.t('summaryDeficit') + ' <strong>' + s.total_deficit.toLocaleString() + '</strong> ' + LWSI18N.t('unitCoal');
+      }
+      bSummary.classList.add('on');
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    // --- Exports (v0.2 — CSV works, PNG + alliance-help text are placeholders) ---
+
+    bCsv.addEventListener('click', function () {
+      if (!currentBatchResult) return;
+      var rows = [['name', 'rank', 'furnace_level', 'coal_stock', 'coal_needed', 'delta', 'status']];
+      currentBatchResult.results.forEach(function (r) {
+        rows.push([r.name, r.rank, r.furnace_level, r.coal_stock, r.coal_needed, r.delta, r.status]);
+      });
+      var csv = rows.map(function (r) { return r.join(','); }).join('\n');
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'coal-burn-' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.click();
+    });
+
+    bHelp.addEventListener('click', function () {
+      if (!currentBatchResult) return;
+      var lines = currentBatchResult.results
+        .filter(function (r) { return r.delta < 0; })
+        .map(function (r) {
+          return '@' + r.name + ' — please send ' + (-r.delta).toLocaleString() + ' coal (you have ' + r.coal_stock.toLocaleString() + ', need ' + r.coal_needed.toLocaleString() + ' for W4 blizzard)';
+        });
+      var text = lines.join('\n') || '(no shortfalls)';
+      // Quick "copy to clipboard" + preview via prompt (v0.1 fallback UI)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          alert('Copied ' + lines.length + ' request lines to clipboard.');
+        });
+      } else {
+        prompt('Copy this text:', text);
+      }
+    });
+
+    bPng.addEventListener('click', function () {
+      if (!currentBatchResult) return;
+      renderBatchPng(currentBatchResult);
+    });
+
+    // Discord-ready 1600×900 dark-theme snapshot of the batch coal-burn results.
+    // Matches the shared palette used in LWS_Access_Codes + LWS_Season_Timeline.
+    function renderBatchPng(data) {
+      var W = 1600, H = 900;
+      var canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      var ctx = canvas.getContext('2d');
+
+      var C = {
+        bg: '#0a0e1a', panel: '#0d1424', panel2: '#12192c',
+        border: 'rgba(255,255,255,0.10)',
+        accent: '#c9a961', text: '#e6e8ee', textDim: '#a8b0c0', textMut: '#7a8290',
+        green: '#8ae0a3', yellow: '#e6cf7a', red: '#e08a8a',
+      };
+      var statusColor = { green: C.green, yellow: C.yellow, red: C.red };
+
+      ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+
+      // Header
+      ctx.fillStyle = C.panel; ctx.fillRect(0, 0, W, 80);
+      ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, 80); ctx.lineTo(W, 80); ctx.stroke();
+      ctx.fillStyle = C.accent; ctx.textBaseline = 'middle';
+      ctx.font = '600 14px system-ui, -apple-system, sans-serif';
+      ctx.fillText('R5TOOLS.IO · COAL BURN CALCULATOR', 40, 40);
+      ctx.fillStyle = C.textDim; ctx.font = '400 13px system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      var subs = [];
+      subs.push(data.summary.member_count + ' members');
+      subs.push(data.summary.duration_hours + 'h blizzard');
+      subs.push(data.summary.overdrive ? 'OVERDRIVE' : 'NORMAL');
+      ctx.fillText(subs.join(' · '), W - 40, 40);
+      ctx.textAlign = 'left';
+
+      // Big status headline
+      var s = data.summary;
+      ctx.font = '400 16px system-ui, sans-serif';
+      ctx.fillStyle = C.textMut; ctx.textAlign = 'center';
+      ctx.fillText('Season 2 · Week-4 -70°C Blizzard Coal Budget', W / 2, 130);
+      var headlineColor = s.short_count === 0 ? C.green : (s.short_count <= 2 ? C.yellow : C.red);
+      ctx.fillStyle = headlineColor; ctx.font = '600 64px ui-monospace, SFMono-Regular, Menlo, monospace';
+      var headline = s.short_count === 0
+        ? 'ALL CLEAR'
+        : s.short_count + ' of ' + s.member_count + ' short';
+      ctx.fillText(headline, W / 2, 195);
+      if (s.short_count > 0) {
+        ctx.fillStyle = C.textDim; ctx.font = '500 18px system-ui, sans-serif';
+        ctx.fillText('Total deficit: ' + s.total_deficit.toLocaleString() + ' coal', W / 2, 235);
+      }
+      ctx.textAlign = 'left';
+
+      // Table body
+      var tableY = 280, tableH = H - 280 - 60;
+      ctx.fillStyle = C.panel; ctx.fillRect(40, tableY, W - 80, tableH);
+      ctx.strokeStyle = C.border; ctx.strokeRect(40, tableY, W - 80, tableH);
+
+      // Column layout: name | rank | furnace | stock | need | delta | status
+      var cols = [
+        { key: 'name',    label: 'Name',        x: 60,   w: 260, align: 'left' },
+        { key: 'rank',    label: 'Rank',        x: 340,  w: 70,  align: 'center' },
+        { key: 'furnace', label: 'Furnace',     x: 430,  w: 90,  align: 'center' },
+        { key: 'stock',   label: 'Stock',       x: 540,  w: 190, align: 'right' },
+        { key: 'need',    label: 'Need',        x: 750,  w: 190, align: 'right' },
+        { key: 'delta',   label: 'Delta',       x: 960,  w: 190, align: 'right' },
+        { key: 'status',  label: 'Status',      x: 1180, w: 320, align: 'left' },
+      ];
+      // Header row
+      ctx.fillStyle = C.accent; ctx.font = '600 12px system-ui, sans-serif';
+      cols.forEach(function (col) {
+        ctx.textAlign = col.align;
+        var tx = col.align === 'right' ? col.x + col.w : (col.align === 'center' ? col.x + col.w / 2 : col.x);
+        ctx.fillText(col.label.toUpperCase(), tx, tableY + 28);
+      });
+      // Header underline
+      ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(60, tableY + 44); ctx.lineTo(W - 60, tableY + 44); ctx.stroke();
+
+      // Rows
+      var rowH = 30, rowY0 = tableY + 60;
+      var maxRows = Math.floor((tableH - 70) / rowH);
+      var shown = data.results.slice(0, maxRows);
+      shown.forEach(function (r, i) {
+        var y = rowY0 + i * rowH + 14;
+        // Row status bar on the left
+        ctx.fillStyle = statusColor[r.status] || C.textMut;
+        ctx.fillRect(46, y - 10, 4, 20);
+        // Name
+        ctx.fillStyle = C.text; ctx.font = '500 13px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        var name = truncateForWidth(ctx, r.name || '', cols[0].w - 20);
+        ctx.fillText(name, cols[0].x, y);
+        // Rank pill
+        ctx.fillStyle = C.panel2; ctx.fillRect(cols[1].x + 15, y - 10, 40, 20);
+        ctx.fillStyle = C.accent; ctx.font = '600 10px ui-monospace, SFMono-Regular, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(r.rank || '—', cols[1].x + cols[1].w / 2, y);
+        // Furnace level
+        ctx.fillStyle = C.textDim; ctx.font = '500 12px ui-monospace, monospace';
+        ctx.fillText('L' + r.furnace_level, cols[2].x + cols[2].w / 2, y);
+        // Stock
+        ctx.textAlign = 'right';
+        ctx.fillStyle = C.textDim;
+        ctx.fillText(r.coal_stock.toLocaleString(), cols[3].x + cols[3].w, y);
+        // Need
+        ctx.fillText(r.coal_needed.toLocaleString(), cols[4].x + cols[4].w, y);
+        // Delta (colored)
+        ctx.fillStyle = r.delta >= 0 ? C.green : C.red;
+        ctx.font = '600 13px ui-monospace, monospace';
+        ctx.fillText((r.delta >= 0 ? '+' : '') + r.delta.toLocaleString(), cols[5].x + cols[5].w, y);
+        // Status label
+        ctx.textAlign = 'left';
+        ctx.fillStyle = statusColor[r.status] || C.textMut;
+        ctx.font = '600 11px system-ui, sans-serif';
+        ctx.fillText(r.status.toUpperCase(), cols[6].x, y);
+      });
+      if (data.results.length > shown.length) {
+        ctx.fillStyle = C.textMut; ctx.font = '400 11px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('+ ' + (data.results.length - shown.length) + ' more', 60, tableY + tableH - 20);
+      }
+
+      // Footer
+      ctx.fillStyle = C.textMut; ctx.font = '400 12px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('r5tools.io · Coal Burn Calculator · ' + new Date().toISOString().slice(0, 10) +
+                   ' · KB: [[06-season-2-frozen]] Overdrive ≈ 4× Normal',
+                   W / 2, H - 30);
+      ctx.textAlign = 'left';
+
+      canvas.toBlob(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'coal-burn-' + new Date().toISOString().slice(0, 10) + '.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    }
+
+    function truncateForWidth(ctx, text, maxWidth) {
+      if (ctx.measureText(text).width <= maxWidth) return text;
+      var t = text;
+      while (t.length > 3 && ctx.measureText(t + '…').width > maxWidth) {
+        t = t.slice(0, -1);
+      }
+      return t + '…';
+    }
+  })();
+  </script>
+</body>
+</html>
