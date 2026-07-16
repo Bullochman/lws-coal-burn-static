@@ -92,9 +92,12 @@
       variantBannerPrefix: 'Planning for',
       variantBannerConnector: '—',
 
-      // ---- S1 Crimson Plague (placeholder-only) ----
+      // ---- S1 Crimson Plague (placeholder-only, KB-cited) ----
       s1PlaceholderTitle: "Season 1 doesn't use resource-window budgeting",
       s1PlaceholderBody: "Crimson Plague has no ambient-cost mechanic like Season 2 coal. Its resource pressure is Virus Resistance for Corruptor fights (KB [[05-season-1-crimson-plague]] §16.3), which isn't a stockpile metric. For S1 planning, use the Season Timeline for Doomsday cycles or the (upcoming) Corruptor VR calculator.",
+      s1CtaTimeline: 'Use the Season Timeline for Doomsday cycles + VR grind sequencing (KB [[05-season-1-crimson-plague]] §16.3).',
+      s1VriCap: 'Grind VRI (Virus Resistance Institute) to L30 for max +10,000 VR — the ONLY meaningful S1 resistance source (KB [[05-season-1-crimson-plague]] §5, §16.3).',
+      s1DoomsdayCadence: 'Doomsday cycle repeats every 7 days across the 48-day (8-week) season — plan Corruptor pushes off the KB05 §16.8 schedule.',
 
       // ---- S3 Golden Kingdom — Spice Budget Calculator ----
       s3ToolTitle: 'Spice Budget Calculator',
@@ -109,6 +112,9 @@
       s3DaysToCapitolHint: 'W7D7 = end target',
       s3DefensiveMode: 'Show plunder exposure (30% per Spice War)',
       s3DefensiveModeHint: 'Keep stockpile ≤ target × 1.43 so 30% loss still leaves target intact.',
+      s3TargetLabel: 'Target Spice at W7D7 Capitol War',
+      s3ProductionRateHint: 'L1 100/hr · L2 200 · L3 300 · L4 400 · L5 500 · L6 600 · +10M Capitol capture · +5M per Cannon (KB [[07-future-seasons]] §765–810)',
+      s3PlunderWarn: 'Each Spice War round can steal up to 30% of your unbanked Spice. Keep buffer ≥ target × 1.43 so a 30% loss still leaves target intact.',
 
       // ---- S4 Evernight Isle — Copper Stockpile Planner ----
       s4ToolTitle: 'Copper Stockpile Planner',
@@ -127,6 +133,8 @@
       s4DaysRemainingHint: 'to end of season',
       s4WarsMode: 'Show Copper Wars plunder exposure (15% cap/round × 8 rounds)',
       s4BloodNightHint: 'Blood Night reminder: 3× 30-min windows/day drain 18k power/min (~1.62M/day)',
+      s4RankingTierHint: 'W4 Copper Ranking Group 1 = top 10 alliances → narrows to 3 by W7 (KB [[07-future-seasons]] §189–196).',
+      s4StoneWarehouseHint: 'Stone Warehouse produces 40,320/hr constant — a Copper side-income floor even during war windows (KB [[07-future-seasons]] §S4).',
 
       // ---- S5 Wild West — Bank & CrystalGold Planner ----
       s5ToolTitle: 'Bank & CrystalGold Planner',
@@ -161,6 +169,14 @@
       s6ThresholdStar1: '1★: +130 (180 total)',
       s6ThresholdStar2: '2★: +330 (510 total)',
       s6ThresholdStar3: '3★: +680 (1,190 total)',
+      s6PackRemovalCompensation: 'Refund from bundle removal: 200 Exclusive Weapon Shards + 1,000 Valor Badges delivered to inbox (KB [[07-future-seasons]] §335).',
+      s6GlobalExpeditionHint: 'Global Expedition rounds run 14 days each on W2/W4/W6 — the three biggest free-shard drops of the season (KB [[07-future-seasons]] §S6).',
+      s6AwakeningRotationHint: 'Awakening rotation locked to season week: W1 Kimberly (Attack passive per KB v1.3 correction) · W3 D.Va · W6 Tesla (KB v1.3 correction from prior W5).',
+
+      // ---- S7 Placeholder (mechanics unpublished) ----
+      s7ComingTitle: 'Season 7 launches ~August 2026',
+      s7ComingBody: "Full tool support arrives when First Fun publishes S7's mechanics. Until then, no map, no resource system, no hero rotation, no faction structure is confirmed. Track updates via r5tools.io.",
+      s7ComingTracker: 'Track: r5tools.io',
     },
     ko: {
       // Chrome
@@ -243,9 +259,12 @@
       variantBannerPrefix: '계획 시즌:',
       variantBannerConnector: '—',
 
-      // ---- S1 Crimson Plague (placeholder-only) ----
+      // ---- S1 Crimson Plague (placeholder-only, KB-cited) ----
       s1PlaceholderTitle: '시즌 1은 자원-창구 예산 계산이 필요하지 않습니다',
       s1PlaceholderBody: '크림슨 플레이그는 시즌 2 석탄처럼 지속 소모 메커니즘이 없습니다. 자원 압박은 커럽터 전투를 위한 바이러스 저항력이며 (KB [[05-season-1-crimson-plague]] §16.3), 이는 비축 지표가 아닙니다. S1 계획에는 시즌 타임라인 또는 향후 커럽터 VR 계산기를 사용하세요.',
+      s1CtaTimeline: '둠스데이 사이클 + VR 그라인드 순서는 시즌 타임라인 도구를 사용하세요 (KB [[05-season-1-crimson-plague]] §16.3).',
+      s1VriCap: 'VRI (바이러스 저항 연구소)를 L30까지 육성 시 최대 +10,000 VR — S1 유일한 유의미 저항 소스 (KB [[05-season-1-crimson-plague]] §5, §16.3).',
+      s1DoomsdayCadence: '둠스데이 사이클은 48일(8주) 시즌 내내 7일 주기로 반복 — 커럽터 푸시는 KB05 §16.8 스케줄에 맞춰 계획하세요.',
 
       // ---- S3 Golden Kingdom ----
       s3ToolTitle: '향신료 예산 계산기',
@@ -260,6 +279,9 @@
       s3DaysToCapitolHint: 'W7D7 = 목표일',
       s3DefensiveMode: '약탈 노출 표시 (향신료 전쟁당 30%)',
       s3DefensiveModeHint: '비축량을 목표 × 1.43 이하로 유지하면 30% 손실 후에도 목표 유지.',
+      s3TargetLabel: 'W7D7 카피톨 전쟁 시점 목표 향신료',
+      s3ProductionRateHint: 'L1 시간당 100 · L2 200 · L3 300 · L4 400 · L5 500 · L6 600 · 수도 점령 +1000만 · 캐논당 +500만 (KB [[07-future-seasons]] §765–810)',
+      s3PlunderWarn: '각 향신료 전쟁 라운드는 미예치 향신료의 최대 30%를 약탈. 30% 손실 후에도 목표 유지하려면 완충 = 목표 × 1.43 이상.',
 
       // ---- S4 Evernight Isle ----
       s4ToolTitle: '코퍼 비축 계획기',
@@ -278,6 +300,8 @@
       s4DaysRemainingHint: '시즌 종료까지',
       s4WarsMode: '코퍼 전쟁 약탈 노출 표시 (라운드당 15% 상한 × 8라운드)',
       s4BloodNightHint: '블러드 나이트 알림: 일 3회 30분 창에서 분당 18k 파워 소모 (~일 162만)',
+      s4RankingTierHint: 'W4 코퍼 랭킹 1그룹 = 상위 10 연맹 → W7까지 3개로 축소 (KB [[07-future-seasons]] §189–196).',
+      s4StoneWarehouseHint: '돌 창고는 시간당 40,320 상시 생산 — 전쟁 창구 중에도 코퍼 부수입 최저 보장 (KB [[07-future-seasons]] §S4).',
 
       // ---- S5 Wild West ----
       s5ToolTitle: '은행 & 크리스탈골드 계획기',
@@ -312,6 +336,14 @@
       s6ThresholdStar1: '1★: +130 (누적 180)',
       s6ThresholdStar2: '2★: +330 (누적 510)',
       s6ThresholdStar3: '3★: +680 (누적 1,190)',
+      s6PackRemovalCompensation: '번들 삭제 보상: 전용 무기 조각 200 + 발러 뱃지 1,000 (수신함 지급, KB [[07-future-seasons]] §335).',
+      s6GlobalExpeditionHint: '글로벌 원정은 W2/W4/W6 각 14일씩 — 시즌 최대 무과금 조각 드롭 3회 (KB [[07-future-seasons]] §S6).',
+      s6AwakeningRotationHint: '각성 로테이션은 시즌 주차별 고정: W1 킴벌리 (KB v1.3 수정: 공격 패시브) · W3 D.Va · W6 테슬라 (KB v1.3에서 W5 → W6 수정).',
+
+      // ---- S7 Placeholder (메커니즘 미공개) ----
+      s7ComingTitle: '시즌 7 출시 예정 — 2026년 8월경',
+      s7ComingBody: 'S7 메커니즘이 공개되면 도구 지원이 시작됩니다. 현재는 지도·자원·영웅 로테이션·팩션 구조 모두 미확정입니다. 업데이트는 r5tools.io에서 확인하세요.',
+      s7ComingTracker: '추적: r5tools.io',
     },
   };
 

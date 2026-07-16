@@ -274,7 +274,7 @@
         return;
       }
 
-      // S1 / other seasons with no variant: plain inactive banner.
+      // S1 / S7 / other seasons with no variant: plain inactive banner.
       document.body.setAttribute('data-variant-kind', 'inactive');
       variantBanner.style.display = 'none';
       seasonBanner.style.display = '';
@@ -287,7 +287,18 @@
         // KB-cited placeholder — S1 has no per-member resource-window budget.
         seasonHeading.textContent = LWSI18N.t('s1PlaceholderTitle');
         seasonMsg.textContent = LWSI18N.t('s1PlaceholderBody');
-        seasonHint.textContent = '';
+        // Show the Timeline-CTA + VRI cap + Doomsday cadence as the hint, so
+        // S1 users still leave with something actionable (KB-cited, no math).
+        seasonHint.textContent = LWSI18N.t('s1CtaTimeline') + ' · '
+          + LWSI18N.t('s1VriCap') + ' · '
+          + LWSI18N.t('s1DoomsdayCadence');
+      } else if (seasonId === 's7-unnamed') {
+        // S7 mechanics unpublished — universal placeholder (mirrored across all
+        // 4 static tools per the season-deep-fill design brief).
+        document.body.setAttribute('data-variant-kind', 's7-coming');
+        seasonHeading.textContent = LWSI18N.t('s7ComingTitle');
+        seasonMsg.textContent = LWSI18N.t('s7ComingBody');
+        seasonHint.textContent = LWSI18N.t('s7ComingTracker');
       } else {
         seasonHeading.textContent = LWSI18N.t('inactiveHeading');
         seasonMsg.textContent = 'Coal burn only applies during Season 2 Polar Storm — '
