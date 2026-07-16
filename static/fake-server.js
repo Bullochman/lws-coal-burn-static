@@ -39,15 +39,57 @@
   // Per-season "primary resource that replaces coal" — read from mechanics_config
   // where possible, else falls back to this map so the placeholder message
   // reads naturally.
+  // v0.5 note: S1 changed from 'Virus Tokens' (event drops, not a stockpile
+  // metric) to 'Virus Resistance' (actual S1 planning currency for Corruptor
+  // fights, KB [[05-season-1-crimson-plague]] §16.3).
   var SEASON_PRIMARY_RESOURCE = {
-    's1-crimson-plague': 'Virus Tokens',
+    's1-crimson-plague': 'Virus Resistance',
     's3-golden-kingdom': 'Spice',
     's4-evernight-isle': 'Copper',
     's5-wild-west': 'CrystalGold',
-    's6-shadow-rainforest': 'Fungus / Spores',
+    's6-shadow-rainforest': 'Awakening Shards',
     's7-unnamed': 'TBD',
     'pre-season': 'n/a',
     'off-season': 'n/a',
+  };
+
+  // Per-season variant registry. When the current season has an entry here,
+  // the client swaps in a season-specific Single-mode form + math (via
+  // buildVariantConfig). Seasons NOT in this table fall through to the plain
+  // "inactive banner" placeholder (S1 stays banner-only, since Crimson Plague
+  // has no per-member resource-window budget analog).
+  //
+  // Each entry describes the resource label + basic tool identity — full math
+  // lives client-side in index.html's renderSeasonMode(), and the endpoints
+  // route through inactiveVariantResult() below (single/batch return a
+  // shape-compatible payload that the client renders differently).
+  var SEASON_VARIANTS = {
+    's3-golden-kingdom': {
+      tool_title_key: 's3ToolTitle',
+      lede_key: 's3Lede',
+      primary_resource: 'Spice',
+      variant_kind: 'stockpile-vs-window',
+    },
+    's4-evernight-isle': {
+      tool_title_key: 's4ToolTitle',
+      lede_key: 's4Lede',
+      primary_resource: 'Copper',
+      variant_kind: 'stockpile-vs-window',
+    },
+    's5-wild-west': {
+      tool_title_key: 's5ToolTitle',
+      lede_key: 's5Lede',
+      primary_resource: 'CrystalGold',
+      variant_kind: 'bank-interest',
+    },
+    's6-shadow-rainforest': {
+      tool_title_key: 's6ToolTitle',
+      lede_key: 's6Lede',
+      primary_resource: 'Awakening Shards',
+      variant_kind: 'awakening-shards',
+    },
+    // S1: intentionally no entry — the banner-only placeholder is more honest
+    // than fake math. See per_season_plan → s1-crimson-plague.
   };
 
   function inferPrimaryResource(seasonId, mc) {
@@ -79,10 +121,12 @@
   }
 
   function buildInactiveConfig(seasonId, mc, seasonName) {
+    var variant = SEASON_VARIANTS[seasonId] || null;
     return {
       active: false,
       seasonName: seasonName,
-      primaryResource: inferPrimaryResource(seasonId, mc || {}),
+      primaryResource: (variant && variant.primary_resource) || inferPrimaryResource(seasonId, mc || {}),
+      variant: variant,   // null for S1 (banner-only); object for S3-S6
     };
   }
 
@@ -267,13 +311,15 @@
       result = evaluateBatch(cfg, body.members, body.duration_hours, body.overdrive);
     } else if (url === '/api/coal/context') {
       // New helper — the UI polls this to decide whether to show the "inactive
-      // season" banner. Not present on the Python server, but a static-only
-      // affordance is fine since it's read-only + derived from public data.
+      // season" banner, or swap in a per-season variant form. Not present on
+      // the Python server, but a static-only affordance is fine since it's
+      // read-only + derived from public data.
       result = {
         season_active: cfg.active,
         season_id: (_currentCtx && _currentCtx.seasonId) || null,
         season_name: cfg.seasonName,
         primary_resource: cfg.primaryResource,
+        variant: cfg.variant || null,   // present for S3-S6; null for S1/S2/S7
       };
     } else {
       return new Response(JSON.stringify({ error: 'endpoint not found in static build' }), {

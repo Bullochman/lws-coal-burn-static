@@ -7,7 +7,7 @@
   <meta name="description" content="Season 2 -70 °C blizzard coal-budget calculator for Last War: Survival alliances." />
   <link rel="stylesheet" href="static/styles.css" />
 </head>
-<body>
+<body data-season-id="s2-polar-storm" data-variant-kind="coal">
 <!-- suite-nav (part of R5TOOLS.IO) -->
 <div style="background:#0a0e1a;border-bottom:1px solid rgba(201,169,97,0.2);padding:6px 12px;font-family:system-ui,-apple-system,sans-serif;font-size:11px;letter-spacing:.06em;color:#7a8290;text-align:center;position:relative;z-index:99998">
   <span>Part of the </span>
@@ -37,19 +37,26 @@
     <div id="main-app">
 
       <div class="card">
-        <h1 data-i18n="title">Coal Burn Calculator</h1>
-        <p class="lede" data-i18n="lede">
+        <h1><span id="tool-title" data-i18n="title">Coal Burn Calculator</span></h1>
+        <p class="lede" id="tool-lede" data-i18n="lede">
           How much Coal does every member need stockpiled to survive the Week-4 -70 °C blizzard with the High-Heat Furnace in Overdrive for the full 3-hour window?
         </p>
+      </div>
+
+      <!-- ============ Season-variant banner (shown when non-S2 but a variant
+           IS implemented — soft-yellow pill so users know they're planning for
+           a different season). Populated from /api/coal/context.variant. -->
+      <div class="card" id="season-variant-banner" style="display:none;border:1px solid rgba(230,207,122,0.4);background:linear-gradient(180deg,#1a1808,#12100a)">
+        <p class="lede" id="season-variant-message" style="margin:0;color:#e6cf7a">—</p>
       </div>
 
       <!-- ============ Season-inactive banner (shown when current warzone
            is NOT running Season 2). Populated from /api/coal/context and
            refreshed on `lws:season-changed`. -->
       <div class="card" id="season-inactive-banner" style="display:none;border:1px solid rgba(201,169,97,0.4);background:linear-gradient(180deg,#1a1408,#12100a)">
-        <h2 style="color:#c9a961" data-i18n="inactiveHeading">Coal burn doesn't apply this season</h2>
+        <h2 style="color:#c9a961" id="season-inactive-heading" data-i18n="inactiveHeading">Coal burn doesn't apply this season</h2>
         <p class="lede" id="season-inactive-message">—</p>
-        <p class="hint" data-i18n="inactiveHint">Switch the warzone selector above to a warzone running Season 2 Polar Storm, or use the <em>change</em> link to override the season for planning.</p>
+        <p class="hint" id="season-inactive-hint" data-i18n="inactiveHint">Switch the warzone selector above to a warzone running Season 2 Polar Storm, or use the <em>change</em> link to override the season for planning.</p>
       </div>
 
       <!-- ============ Single-member card ============ -->
@@ -196,35 +203,96 @@
     var currentBatchResult = null;
 
     // --- Season-context banner ---------------------------------------------
-    // Coal burn is a Season-2-only mechanic. For any other season we show
-    // an "inactive" placeholder and disable the calc buttons.
+    // Coal burn is a Season-2-only mechanic natively. For other seasons we
+    // show either:
+    //   (a) a variant banner + rebranded copy (S3 Spice / S4 Copper / S5 Bank /
+    //       S6 Awakening Shards) — placeholder math still yellow-flagged as
+    //       "variant coming soon" until the per-season formulas land
+    //   (b) a plain "inactive" placeholder (S1 Crimson Plague — no analog)
+    //   (c) the full S2 calculator
     var mainApp = document.getElementById('main-app');
     var seasonBanner = document.getElementById('season-inactive-banner');
     var seasonMsg = document.getElementById('season-inactive-message');
+    var seasonHeading = document.getElementById('season-inactive-heading');
+    var seasonHint = document.getElementById('season-inactive-hint');
+    var variantBanner = document.getElementById('season-variant-banner');
+    var variantMsg = document.getElementById('season-variant-message');
+    var toolTitleEl = document.getElementById('tool-title');
+    var toolLedeEl = document.getElementById('tool-lede');
+    var currentCtx = null;   // last-applied /api/coal/context payload
 
     function applySeasonContext(ctx) {
-      var isActive = !!(ctx && ctx.season_active);
+      currentCtx = ctx || {};
+      var seasonId = (ctx && ctx.season_id) || 's2-polar-storm';
+      document.body.setAttribute('data-season-id', seasonId);
+
+      var isActive = !!(ctx && ctx.season_active);   // true = S2 (real math)
+      var variant = ctx && ctx.variant;              // present for S3-S6
+
       if (isActive) {
+        // S2 path — full coal calculator, hide both banners.
         seasonBanner.style.display = 'none';
-        // Un-disable the primary action buttons that were locked by a prior
-        // non-S2 context.
+        variantBanner.style.display = 'none';
+        document.body.setAttribute('data-variant-kind', 'coal');
+        // Restore the canonical S2 title + lede (i18n handles the swap on
+        // language toggle).
+        toolTitleEl.setAttribute('data-i18n', 'title');
+        toolLedeEl.setAttribute('data-i18n', 'lede');
+        toolTitleEl.textContent = LWSI18N.t('title');
+        toolLedeEl.textContent = LWSI18N.t('lede');
         document.getElementById('s-calc').disabled = false;
         document.getElementById('b-run').disabled = false;
+        return;
+      }
+
+      // Non-S2: wipe stale result panels so users aren't left with S2 numbers.
+      sResult.classList.remove('on');
+      bTable.style.display = 'none';
+      bSummary.classList.remove('on');
+      currentSingleResult = null;
+      currentBatchResult = null;
+      document.getElementById('s-calc').disabled = true;
+      document.getElementById('b-run').disabled = true;
+
+      var seasonName = (ctx && ctx.season_name) || seasonId || 'this season';
+      var resource = (ctx && ctx.primary_resource) || 'the season resource';
+
+      if (variant && variant.tool_title_key) {
+        // S3-S6: rebrand title + lede, show soft-yellow variant banner, still
+        // hide the S2 "inactive" card (users see the tool as their variant).
+        document.body.setAttribute('data-variant-kind', variant.variant_kind || 'variant');
+        toolTitleEl.setAttribute('data-i18n', variant.tool_title_key);
+        toolLedeEl.setAttribute('data-i18n', variant.lede_key);
+        toolTitleEl.textContent = LWSI18N.t(variant.tool_title_key);
+        toolLedeEl.textContent = LWSI18N.t(variant.lede_key);
+        seasonBanner.style.display = 'none';
+        variantBanner.style.display = '';
+        variantMsg.textContent = LWSI18N.t('variantBannerPrefix') + ' '
+          + seasonName + ' ' + LWSI18N.t('variantBannerConnector') + ' '
+          + LWSI18N.t(variant.tool_title_key)
+          + ' (variant preview — S2 form retained for reference, per-season formulas coming soon)';
+        return;
+      }
+
+      // S1 / other seasons with no variant: plain inactive banner.
+      document.body.setAttribute('data-variant-kind', 'inactive');
+      variantBanner.style.display = 'none';
+      seasonBanner.style.display = '';
+      // Keep the canonical S2 title so the tool identity stays consistent.
+      toolTitleEl.setAttribute('data-i18n', 'title');
+      toolLedeEl.setAttribute('data-i18n', 'lede');
+      toolTitleEl.textContent = LWSI18N.t('title');
+      toolLedeEl.textContent = LWSI18N.t('lede');
+      if (seasonId === 's1-crimson-plague') {
+        // KB-cited placeholder — S1 has no per-member resource-window budget.
+        seasonHeading.textContent = LWSI18N.t('s1PlaceholderTitle');
+        seasonMsg.textContent = LWSI18N.t('s1PlaceholderBody');
+        seasonHint.textContent = '';
       } else {
-        var resource = (ctx && ctx.primary_resource) || 'the season resource';
-        var seasonName = (ctx && ctx.season_name) || (ctx && ctx.season_id) || 'this season';
+        seasonHeading.textContent = LWSI18N.t('inactiveHeading');
         seasonMsg.textContent = 'Coal burn only applies during Season 2 Polar Storm — '
           + seasonName + ' uses ' + resource + '.';
-        seasonBanner.style.display = '';
-        document.getElementById('s-calc').disabled = true;
-        document.getElementById('b-run').disabled = true;
-        // Wipe any stale result panels so the user isn't left with S2 numbers
-        // that no longer apply.
-        sResult.classList.remove('on');
-        bTable.style.display = 'none';
-        bSummary.classList.remove('on');
-        currentSingleResult = null;
-        currentBatchResult = null;
+        seasonHint.textContent = LWSI18N.t('inactiveHint');
       }
     }
 
@@ -408,10 +476,21 @@
 
     bHelp.addEventListener('click', function () {
       if (!currentBatchResult) return;
+      // Resource label swaps per season (Coal / Spice / Copper / CrystalGold / Shards).
+      var resourceLabel = 'coal';
+      var contextLabel = 'W4 blizzard';
+      if (currentCtx && !currentCtx.season_active && currentCtx.primary_resource) {
+        resourceLabel = currentCtx.primary_resource.toLowerCase();
+        var sid = currentCtx.season_id || '';
+        if (sid === 's3-golden-kingdom') contextLabel = 'Capitol War (W7D7)';
+        else if (sid === 's4-evernight-isle') contextLabel = 'Copper Wars finale';
+        else if (sid === 's5-wild-west') contextLabel = 'season-end CrystalGold ranking';
+        else if (sid === 's6-shadow-rainforest') contextLabel = 'Awakening deadline';
+      }
       var lines = currentBatchResult.results
         .filter(function (r) { return r.delta < 0; })
         .map(function (r) {
-          return '@' + r.name + ' — please send ' + (-r.delta).toLocaleString() + ' coal (you have ' + r.coal_stock.toLocaleString() + ', need ' + r.coal_needed.toLocaleString() + ' for W4 blizzard)';
+          return '@' + r.name + ' — please send ' + (-r.delta).toLocaleString() + ' ' + resourceLabel + ' (you have ' + r.coal_stock.toLocaleString() + ', need ' + r.coal_needed.toLocaleString() + ' for ' + contextLabel + ')';
         });
       var text = lines.join('\n') || '(no shortfalls)';
       // Quick "copy to clipboard" + preview via prompt (v0.1 fallback UI)
@@ -467,7 +546,14 @@
       var s = data.summary;
       ctx.font = '400 16px system-ui, sans-serif';
       ctx.fillStyle = C.textMut; ctx.textAlign = 'center';
-      ctx.fillText('Season 2 · Week-4 -70°C Blizzard Coal Budget', W / 2, 130);
+      // Rebrand headline per season — pulls from currentCtx populated by
+      // /api/coal/context. S2 keeps the canonical blizzard framing; S3-S6
+      // swap to their resource-budget framing.
+      var pngHeadline = 'Season 2 · Week-4 -70°C Blizzard Coal Budget';
+      if (currentCtx && !currentCtx.season_active && currentCtx.variant && currentCtx.variant.tool_title_key) {
+        pngHeadline = (currentCtx.season_name || 'Season') + ' · ' + LWSI18N.t(currentCtx.variant.tool_title_key);
+      }
+      ctx.fillText(pngHeadline, W / 2, 130);
       var headlineColor = s.short_count === 0 ? C.green : (s.short_count <= 2 ? C.yellow : C.red);
       ctx.fillStyle = headlineColor; ctx.font = '600 64px ui-monospace, SFMono-Regular, Menlo, monospace';
       var headline = s.short_count === 0
@@ -550,11 +636,21 @@
         ctx.fillText('+ ' + (data.results.length - shown.length) + ' more', 60, tableY + tableH - 20);
       }
 
-      // Footer
+      // Footer — KB citation swaps per season variant.
       ctx.fillStyle = C.textMut; ctx.font = '400 12px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('r5tools.io · Coal Burn Calculator · ' + new Date().toISOString().slice(0, 10) +
-                   ' · KB: [[06-season-2-frozen]] Overdrive ≈ 4× Normal',
+      var footerKb = 'KB: [[06-season-2-frozen]] Overdrive ≈ 4× Normal';
+      var toolLabel = 'Coal Burn Calculator';
+      if (currentCtx && !currentCtx.season_active && currentCtx.variant) {
+        var sid = currentCtx.season_id || '';
+        if (sid === 's3-golden-kingdom') footerKb = 'KB: [[07-future-seasons]] §S3 Spice 100–600/hr, 30% steal cap';
+        else if (sid === 's4-evernight-isle') footerKb = 'KB: [[07-future-seasons]] §S4 Copper 100–600/hr, 15% cap/round × 8 rounds';
+        else if (sid === 's5-wild-west') footerKb = 'KB: [[07-future-seasons]] §S5 Banks + High Noon 15k/day; interest rate unverified';
+        else if (sid === 's6-shadow-rainforest') footerKb = 'KB: [[07-future-seasons]] §S6 Awakening 50/130/330/680; bundles removed mid-S6';
+        if (currentCtx.variant.tool_title_key) toolLabel = LWSI18N.t(currentCtx.variant.tool_title_key);
+      }
+      ctx.fillText('r5tools.io · ' + toolLabel + ' · ' + new Date().toISOString().slice(0, 10) +
+                   ' · ' + footerKb,
                    W / 2, H - 30);
       ctx.textAlign = 'left';
 
