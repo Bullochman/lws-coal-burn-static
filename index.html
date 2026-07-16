@@ -162,10 +162,10 @@
 
   <!-- ============ Access-Codes gate ============
        Wraps #main-app in an unlock overlay if the visitor doesn't have a valid
-       lws_unlock_code cookie. `https://web-production-456d4.up.railway.app` is replaced server-side
+       lws_unlock_code cookie. `https://access-codes.r5tools.io` is replaced server-side
        from the ACCESS_CODES_URL env var so local dev can point at a local
        codes server. -->
-  <script src="https://web-production-456d4.up.railway.app/lib.js"></script>
+  <script src="https://access-codes.r5tools.io/lib.js"></script>
   <script>
     if (window.LWSAccessCodes && typeof LWSAccessCodes.gate === 'function') {
       LWSAccessCodes.gate('main-app');
