@@ -7,6 +7,7 @@
   <meta name="description" content="Season 2 -70 °C blizzard coal-budget calculator for Last War: Survival alliances." />
   <link rel="stylesheet" href="static/styles.css" />
   <script src="static/lws-countdown.js" defer></script>
+  <script defer src="static/lws-track.js"></script>
 </head>
 <body data-season-id="s2-polar-storm" data-variant-kind="coal">
 <!-- suite-nav (part of R5TOOLS.IO) -->
@@ -166,7 +167,7 @@
        lws_unlock_code cookie. `https://access-codes.r5tools.io` is replaced server-side
        from the ACCESS_CODES_URL env var so local dev can point at a local
        codes server. -->
-  <script src="https://access-codes.r5tools.io/lib.js"></script>
+  <script src="https://access-codes.r5tools.io/lib.js?v=2"></script>
   <script>
     if (window.LWSAccessCodes && typeof LWSAccessCodes.gate === 'function') {
       LWSAccessCodes.gate('main-app');
