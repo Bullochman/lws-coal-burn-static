@@ -127,7 +127,7 @@
         <div class="btn-row">
           <button class="btn btn-primary" id="b-run" data-i18n="batchRun">Run batch</button>
           <button class="btn btn-secondary" id="b-csv" data-i18n="batchExportCsv" disabled>Export CSV</button>
-          <button class="btn btn-secondary" id="b-png" data-i18n="batchExportPng" disabled>Export PNG</button>
+          <button class="btn btn-secondary" id="b-png" data-i18n="batchExportPng" disabled>Export PNG</button><span id="lws-discord-slot" style="display:inline-block;margin-left:6px"></span><span id="lws-discord-gear-slot" style="display:inline-block;margin-left:4px"></span>
           <button class="btn btn-secondary" id="b-help" data-i18n="batchExportHelp" disabled>Alliance-help text</button>
         </div>
 
@@ -181,6 +181,7 @@
 
   <!-- ============ fake-server (GH Pages static build only — intercepts /api/coal/*) ============ -->
   <script src="static/fake-server.js"></script>
+<script src="static/lws-discord.js" defer></script>
 
   <!-- ============ i18n runtime ============ -->
   <script src="static/i18n.js"></script>
@@ -686,5 +687,6 @@
   })();
   </script>
   <script src="https://chat.r5tools.io/widget.js" defer></script>
+<script>window.addEventListener("DOMContentLoaded",function(){if(window.LWSDiscord&&typeof LWSDiscord.attachToButton==="function"){setTimeout(function(){LWSDiscord.attachToButton({pngBtnId:"b-png",slotId:"lws-discord-slot",gearSlotId:"lws-discord-gear-slot",filename:"coal-burn.png",contextText:"Coal Burn Batch",toolName:"Coal Burn Calculator"});},300);}});</script>
 </body>
 </html>
