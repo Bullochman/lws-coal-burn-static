@@ -211,10 +211,38 @@ footer a { color: var(--accent); text-decoration: none; }
 footer a:hover { text-decoration: underline; }
 
 /* ---- responsive --------------------------------------------------------- */
+/* Mobile overflow guard: match landing-planner pattern.
+   .card wraps its inner content and hides horizontal spill; the batch table
+   inside .batch-table-wrap keeps its own scrollable box. .lede paragraph
+   contains a comma-joined column list ("name,rank,hq_level,...") that browsers
+   won't break at commas — force break-word so it wraps on narrow screens. */
+.card { min-width: 0; overflow-x: hidden; }
+.card .lede,
+.card p,
+.card code { overflow-wrap: anywhere; word-break: break-word; }
+.btn { min-height: 40px; }
+.batch-textarea { max-width: 100%; }
+
 @media (max-width: 640px) {
   .wrap { padding: var(--sp-3); }
   h1 { font-size: 22px; }
   .card { padding: var(--sp-4); }
   .result dl { grid-template-columns: 1fr; }
   .result dt { margin-top: var(--sp-2); }
+}
+
+/* Shrink batch-table type and cell padding so all 7 cols fit narrower. */
+@media (max-width: 520px) {
+  body { padding: 0; }
+  .wrap { padding: 10px 8px; }
+  h1 { font-size: clamp(20px, 5.5vw, 26px); }
+  h2 { font-size: clamp(15px, 4.5vw, 20px); }
+  .card { padding: 12px 10px; }
+  table.batch { font-size: 11px; }
+  table.batch th, table.batch td { padding: 5px 6px; }
+  table.batch th { font-size: 9px; letter-spacing: 0.04em; }
+  .result dl { grid-template-columns: 1fr; }
+  .result dd { font-size: 13px; }
+  .btn { padding: 10px 14px; font-size: 13px; min-height: 40px; }
+  .btn-row { gap: 6px; }
 }
