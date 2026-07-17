@@ -377,7 +377,13 @@
     },
   };
 
-  var initialLang = (navigator.language || 'en').toLowerCase().startsWith('ko') ? 'ko' : 'en';
+  var initialLang = (function () {
+    try {
+      var stored = localStorage.getItem('lws_lang');
+      if (stored === 'en' || stored === 'ko') return stored;
+    } catch (e) { /* private mode */ }
+    return (navigator.language || 'en').toLowerCase().startsWith('ko') ? 'ko' : 'en';
+  })();
 
   window.LWSI18N = {
     dict: I18N,
@@ -409,6 +415,8 @@
 
     toggle: function () {
       this.lang = (this.lang === 'en') ? 'ko' : 'en';
+      try { localStorage.setItem('lws_lang', this.lang); } catch (e) { /* ignore */ }
+      try { window.dispatchEvent(new CustomEvent('lws:lang-changed', { detail: { lang: this.lang } })); } catch (e) { /* ignore */ }
       this.apply();
     },
   };
