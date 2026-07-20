@@ -117,6 +117,101 @@
         </div>
       </div>
 
+      <!-- ============ Coal Sources panel ============
+           Nine KB-verified Season 2 coal sources with per-source editable
+           daily-yield estimates. Feeds the 56-day budget chart below.
+           KB: [[17-seasons-catalog]] "Coal sources (Season 2)" §118-127
+           KB: [[06-season-2-frozen]] Dig Sites 2,736-3,456/hr §170 -->
+      <div class="card" id="coal-sources-card">
+        <h2 data-i18n="sourcesHeading">Coal sources (Season 2)</h2>
+        <p class="lede" data-i18n="sourcesDesc">Estimated daily coal yield per source — all 9 KB-verified. Edit any row to match your alliance's actual pace; the 56-day budget chart below updates as you type.</p>
+
+        <div class="batch-table-wrap">
+          <table class="batch" id="src-table">
+            <thead>
+              <tr>
+                <th data-i18n="srcColSource">Source</th>
+                <th class="num" data-i18n="srcColDaily">Est. coal / day</th>
+                <th data-i18n="srcColOn">Enabled</th>
+                <th data-i18n="srcColNote">KB note</th>
+              </tr>
+            </thead>
+            <tbody id="src-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="src-reset" data-i18n="srcReset">Reset defaults</button>
+        </div>
+
+        <div class="summary on" id="src-summary" style="margin-top:16px"></div>
+      </div>
+
+      <!-- ============ Titanium Alloy Factory subsection ============
+           Cascading unlock (L15 → next factory), +720/hr per level,
+           4 free + 1 Weekly Pass. First-7-day recommended sequence.
+           KB: [[17-seasons-catalog]] §109-116  [[06-season-2-frozen]] §126-134 -->
+      <div class="card" id="alloy-card">
+        <h2 data-i18n="alloyHeading">Titanium Alloy Factory economy</h2>
+        <p class="lede" data-i18n="alloyDesc">Factory 1 is available at S2 start. Level 15 on Factory N unlocks Factory N+1 — chain up to 4 free; Factory 5 requires the Weekly Pass. Each factory produces a flat +720 titanium/hr per level (L30 max = 21,600/hr).</p>
+
+        <div class="batch-table-wrap">
+          <table class="batch" id="alloy-schedule">
+            <thead>
+              <tr>
+                <th data-i18n="alloyColFactory">Factory</th>
+                <th data-i18n="alloyColUnlock">Unlock trigger</th>
+                <th class="num" data-i18n="alloyColOutput">Output at L15</th>
+                <th class="num" data-i18n="alloyColCoalCost">Coal cost L1→L15</th>
+                <th data-i18n="alloyColNotes">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="alloy-tbody"></tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-top:24px;color:var(--accent);font-size:14px;letter-spacing:0.06em;text-transform:uppercase" data-i18n="alloySequenceHeading">Recommended factory sequence (first 7 days)</h3>
+        <ol id="alloy-sequence" style="color:var(--text-dim);font-size:14px;line-height:1.55;padding-left:20px;margin:8px 0 0"></ol>
+        <p class="hint" style="margin-top:8px" data-i18n="alloyTotalCoal">Cascade-to-L15 across 4 free factories costs roughly ~330K coal in factory upgrades alone — before feeding the furnace.</p>
+      </div>
+
+      <!-- ============ 56-day coal budget line chart ============
+           X = day 1..56 (S2 = 8 weeks). Y = projected coal reserve given
+           (daily earn from enabled sources) minus (daily burn from HHF +
+           Alliance Furnace + factory upgrades). Highlights the "you'll run
+           out" day with a red marker + text callout. -->
+      <div class="card" id="budget-chart-card">
+        <h2 data-i18n="budgetHeading">56-day coal budget projection</h2>
+        <p class="lede" data-i18n="budgetDesc">Starting from your current stockpile, tracks projected daily reserve across the full 8-week season. Adjusts for High-Heat Furnace burn, Alliance Furnace level, and enabled coal sources. If the line crosses zero, that's the day your alliance runs cold — plan replenishment before then.</p>
+
+        <div class="form-row">
+          <div class="field">
+            <label data-i18n="allianceFurnaceLevel">Alliance Furnace level</label>
+            <input type="number" id="af-level" min="1" max="20" value="10" />
+            <div class="hint" data-i18n="allianceFurnaceLevelHint">1 – 20 (auto-upgrades on Rare Soil)</div>
+          </div>
+          <div class="field">
+            <label data-i18n="afHoursPerDay">AF hours active / day</label>
+            <input type="number" id="af-hours" min="0" max="24" step="0.5" value="4" />
+            <div class="hint" data-i18n="afHoursPerDayHint">Alliance-wide burn window (blizzards + prep)</div>
+          </div>
+          <div class="field">
+            <label data-i18n="hhfHoursPerDay">HHF hours active / day</label>
+            <input type="number" id="hhf-hours" min="0" max="24" step="0.5" value="6" />
+            <div class="hint" data-i18n="hhfHoursPerDayHint">Personal furnace uptime (normal mode)</div>
+          </div>
+          <div class="field">
+            <label data-i18n="hhfOverdriveHoursPerDay">HHF overdrive hours / day</label>
+            <input type="number" id="hhf-od-hours" min="0" max="24" step="0.5" value="1" />
+            <div class="hint" data-i18n="hhfOverdriveHoursPerDayHint">Blizzard windows only</div>
+          </div>
+        </div>
+
+        <div id="budget-chart" style="min-height:280px;margin-top:16px"></div>
+        <p class="hint" id="budget-alarm" style="margin-top:12px;font-weight:600"></p>
+        <p class="hint" style="margin-top:8px" data-i18n="budgetNote">Model: daily reserve[t] = reserve[t-1] + Σ(enabled sources) − personal_burn − alliance_burn_share − factory_upgrade_avg. Alliance burn share = per-furnace-hourly × hours × 1 (single member's contribution to alliance donations, capped 50/day/member per KB [[06-season-2-frozen]] §120).</p>
+      </div>
+
       <!-- ============ Batch card ============ -->
       <div class="card">
         <h2 data-i18n="batchHeading">Batch (R5 mode)</h2>
@@ -188,6 +283,31 @@
 
   <!-- ============ i18n runtime ============ -->
   <script src="static/i18n.js"></script>
+
+  <!-- ============ Shared LWS line-chart component (from r5tools.io) ============ -->
+  <script src="https://r5tools.io/line-chart.js" defer></script>
+
+  <!-- ============ Roster freshness widget ============
+       Floating top-right nudge if the alliance's roster is stale.
+       Reads the last-used alliance_signature from localStorage (set by
+       LWS_Roster_Extractor when the R5 confirms a roster). If no signature
+       is present the widget silently no-ops. -->
+  <script src="https://roster.r5tools.io/static/roster-freshness.js" defer></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      var sig = null;
+      try { sig = localStorage.getItem('lws_last_alliance_sig'); } catch (e) { /* private mode */ }
+      if (sig && window.RosterFreshness && typeof window.RosterFreshness.mount === 'function') {
+        var lang = (window.LWSI18N && window.LWSI18N.lang) === 'ko' ? 'ko' : 'en';
+        window.RosterFreshness.mount({
+          signature: sig,
+          apiBase: 'https://roster.r5tools.io',
+          lang: lang,
+          onRefresh: function () { window.open('https://roster.r5tools.io/', '_blank'); }
+        });
+      }
+    });
+  </script>
 
   <!-- ============ App logic (scaffold — real formatters + exports land in v0.2) ============ -->
   <script>
@@ -687,6 +807,258 @@
       }
       return t + '…';
     }
+
+    // ============================================================
+    //  Coal source panel (9 KB-verified S2 sources, editable yields)
+    //  KB: [[17-seasons-catalog]] "Coal sources (Season 2)" §118-127
+    // ============================================================
+
+    // Defaults are per-day averages derived from community reports + KB.
+    // Users can edit each row; totals recompute + drive the 56-day chart.
+    var COAL_SOURCE_DEFAULTS = [
+      { id: 'polar_zombies',   labelKey: 'srcPolarZombies',   defaultPerDay: 200000, oneShot: true,  activeDayStart: 1,  activeDayEnd: 1,  noteKey: 'srcPolarZombiesNote' },
+      { id: 'season_quests',   labelKey: 'srcSeasonQuests',   defaultPerDay: 12000,  oneShot: false, activeDayStart: 1,  activeDayEnd: 56, noteKey: 'srcSeasonQuestsNote' },
+      { id: 'dig_site',        labelKey: 'srcDigSite',        defaultPerDay: 60000,  oneShot: false, activeDayStart: 3,  activeDayEnd: 56, noteKey: 'srcDigSiteNote' },
+      { id: 'hero_return',     labelKey: 'srcHeroReturn',     defaultPerDay: 8000,   oneShot: false, activeDayStart: 1,  activeDayEnd: 7,  noteKey: 'srcHeroReturnNote' },
+      { id: 'supply_collect',  labelKey: 'srcSupplyCollect',  defaultPerDay: 15000,  oneShot: false, activeDayStart: 1,  activeDayEnd: 56, noteKey: 'srcSupplyCollectNote' },
+      { id: 'distressed',      labelKey: 'srcDistressed',     defaultPerDay: 10000,  oneShot: false, activeDayStart: 1,  activeDayEnd: 56, noteKey: 'srcDistressedNote' },
+      { id: 'polar_dishes',    labelKey: 'srcPolarDishes',    defaultPerDay: 92000,  oneShot: false, activeDayStart: 8,  activeDayEnd: 14, noteKey: 'srcPolarDishesNote' },
+      { id: 'passes',          labelKey: 'srcPasses',         defaultPerDay: 20000,  oneShot: false, activeDayStart: 1,  activeDayEnd: 56, noteKey: 'srcPassesNote' },
+      { id: 'coal_packs',      labelKey: 'srcCoalPacks',      defaultPerDay: 0,      oneShot: false, activeDayStart: 1,  activeDayEnd: 56, noteKey: 'srcCoalPacksNote' },
+    ];
+
+    var srcState = COAL_SOURCE_DEFAULTS.map(function (s) {
+      return { id: s.id, perDay: s.defaultPerDay, enabled: s.defaultPerDay > 0 };
+    });
+
+    function renderSourceTable() {
+      var tbody = document.getElementById('src-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      COAL_SOURCE_DEFAULTS.forEach(function (src, i) {
+        var row = srcState[i];
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + escapeHtml(LWSI18N.t(src.labelKey)) + '</td>' +
+          '<td class="num"><input type="number" min="0" step="1000" value="' + row.perDay + '" data-src-idx="' + i + '" style="width:120px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 6px;font-family:var(--mono);text-align:right" /></td>' +
+          '<td><label class="checkbox" style="padding:0;background:none;border:none"><input type="checkbox" data-src-idx="' + i + '" ' + (row.enabled ? 'checked' : '') + ' /></label></td>' +
+          '<td style="font-size:12px;color:var(--text-mute)">' + escapeHtml(LWSI18N.t(src.noteKey)) + '</td>';
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('input[type="number"][data-src-idx]').forEach(function (inp) {
+        inp.addEventListener('input', function () {
+          var i = parseInt(inp.getAttribute('data-src-idx'), 10);
+          srcState[i].perDay = Math.max(0, parseInt(inp.value, 10) || 0);
+          updateSourceSummary();
+          renderBudgetChart();
+        });
+      });
+      tbody.querySelectorAll('input[type="checkbox"][data-src-idx]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          var i = parseInt(cb.getAttribute('data-src-idx'), 10);
+          srcState[i].enabled = cb.checked;
+          updateSourceSummary();
+          renderBudgetChart();
+        });
+      });
+      updateSourceSummary();
+    }
+
+    function updateSourceSummary() {
+      var el = document.getElementById('src-summary');
+      if (!el) return;
+      var totalDaily = 0;
+      srcState.forEach(function (row, i) {
+        if (!row.enabled) return;
+        var src = COAL_SOURCE_DEFAULTS[i];
+        if (src.oneShot) return; // one-shots don't average across the whole season
+        // window-limited sources contribute pro-rata across 56 days
+        var windowLen = (src.activeDayEnd - src.activeDayStart + 1);
+        totalDaily += row.perDay * (windowLen / 56);
+      });
+      var oneShotTotal = 0;
+      srcState.forEach(function (row, i) {
+        if (!row.enabled) return;
+        var src = COAL_SOURCE_DEFAULTS[i];
+        if (src.oneShot) oneShotTotal += row.perDay;
+      });
+      el.innerHTML = '<strong>' + Math.round(totalDaily).toLocaleString() + '</strong> ' + LWSI18N.t('srcAvgDaily') +
+        ' · <strong>' + oneShotTotal.toLocaleString() + '</strong> ' + LWSI18N.t('srcOneShot');
+    }
+
+    document.getElementById('src-reset').addEventListener('click', function () {
+      srcState = COAL_SOURCE_DEFAULTS.map(function (s) {
+        return { id: s.id, perDay: s.defaultPerDay, enabled: s.defaultPerDay > 0 };
+      });
+      renderSourceTable();
+      renderBudgetChart();
+    });
+
+    // ============================================================
+    //  Titanium Alloy Factory schedule
+    //  KB: [[06-season-2-frozen]] §126-134, §457-469
+    //  KB: [[17-seasons-catalog]] §109-116
+    // ============================================================
+
+    // L1→L15 cumulative coal costs from KB [[06-season-2-frozen]] §459-469:
+    //   L1=720, L5=11,200, L10=85,100, L15=137,000
+    // Total per factory L1→L15 = ~137,000 (that's the cumulative cost, not incremental)
+    var ALLOY_L15_COST = 137000;
+
+    function renderAlloySchedule() {
+      var tbody = document.getElementById('alloy-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      var factories = [
+        { n: 1, unlockKey: 'alloyUnlockF1', notesKey: 'alloyNotesF1' },
+        { n: 2, unlockKey: 'alloyUnlockF2', notesKey: 'alloyNotesF2' },
+        { n: 3, unlockKey: 'alloyUnlockF3', notesKey: 'alloyNotesF3' },
+        { n: 4, unlockKey: 'alloyUnlockF4', notesKey: 'alloyNotesF4' },
+        { n: 5, unlockKey: 'alloyUnlockF5', notesKey: 'alloyNotesF5' },
+      ];
+      factories.forEach(function (f) {
+        var tr = document.createElement('tr');
+        var isPaid = f.n === 5;
+        tr.innerHTML =
+          '<td><strong>' + LWSI18N.t('alloyFactory') + ' ' + f.n + '</strong></td>' +
+          '<td>' + escapeHtml(LWSI18N.t(f.unlockKey)) + '</td>' +
+          '<td class="num">' + (15 * 720).toLocaleString() + ' /hr</td>' +
+          '<td class="num">' + ALLOY_L15_COST.toLocaleString() + '</td>' +
+          '<td style="font-size:12px;color:' + (isPaid ? 'var(--status-yellow)' : 'var(--text-mute)') + '">' + escapeHtml(LWSI18N.t(f.notesKey)) + '</td>';
+        tbody.appendChild(tr);
+      });
+
+      var ol = document.getElementById('alloy-sequence');
+      ol.innerHTML = '';
+      ['alloySeqDay1', 'alloySeqDay2', 'alloySeqDay3', 'alloySeqDay4', 'alloySeqDay5', 'alloySeqDay6', 'alloySeqDay7'].forEach(function (key) {
+        var li = document.createElement('li');
+        li.textContent = LWSI18N.t(key);
+        li.style.marginBottom = '4px';
+        ol.appendChild(li);
+      });
+    }
+
+    // ============================================================
+    //  56-day coal budget projection chart
+    // ============================================================
+
+    // KB: Alliance Furnace L20 = 1,440 coal/min normal, 5,760 overdrive.
+    // [[06-season-2-frozen]] §120. We linearly interpolate L1→L20 for the shim.
+    function alliancFurnaceBurnPerMin(level) {
+      var lvl = Math.max(1, Math.min(20, parseInt(level, 10) || 1));
+      // Linear interp: L1 ~ 72/min, L20 = 1,440/min (matches the 20x scaling)
+      return 72 + (1440 - 72) * ((lvl - 1) / 19);
+    }
+
+    function projectCoalReserve(opts) {
+      // opts = { furnaceLevel, initialStock, afLevel, afHours, hhfHours, hhfODHours }
+      var reserve = opts.initialStock || 0;
+      var series = [];
+      // HHF burn per min at requested furnace level, both modes
+      // Reuse the same anchors the fake-server uses.
+      var HHF_L1 = 30, HHF_L30 = 450, OD_MUL = 4;
+      var frac = (Math.max(1, Math.min(30, opts.furnaceLevel)) - 1) / 29;
+      var hhfNormalPerMin = HHF_L1 + frac * (HHF_L30 - HHF_L1);
+      var hhfODPerMin = hhfNormalPerMin * OD_MUL;
+      var afPerMin = alliancFurnaceBurnPerMin(opts.afLevel);
+
+      // Daily burn (all in coal/day)
+      var hhfDaily = (hhfNormalPerMin * 60 * opts.hhfHours) + (hhfODPerMin * 60 * opts.hhfODHours);
+      // Alliance furnace: single-member donation share, capped at 50 donations/day.
+      // Assume a typical donation = 500 coal, cap = 25,000/day. Use whichever is
+      // lower: (member's share of AF burn) OR the 25K cap.
+      var afTotalDaily = afPerMin * 60 * opts.afHours;
+      var perMemberShareEst = afTotalDaily / 50; // assume ~50 active members
+      var afShare = Math.min(perMemberShareEst, 25000);
+
+      // Factory upgrade coal — average ~10K/day across weeks 1-3 as members
+      // cascade L15 across 4 factories (137K × 4 = 548K over ~21 days = ~26K/day).
+      // Weeks 4-8 tail off to ~2K/day for maintenance upgrades.
+      function factoryDailyCost(day) {
+        if (day <= 21) return 26000;
+        return 2000;
+      }
+
+      // Daily source income
+      function sourceDailyIncome(day) {
+        var total = 0;
+        srcState.forEach(function (row, i) {
+          if (!row.enabled) return;
+          var src = COAL_SOURCE_DEFAULTS[i];
+          if (day < src.activeDayStart || day > src.activeDayEnd) return;
+          if (src.oneShot) {
+            if (day === src.activeDayStart) total += row.perDay;
+          } else {
+            total += row.perDay;
+          }
+        });
+        return total;
+      }
+
+      var runOutDay = null;
+      for (var d = 1; d <= 56; d++) {
+        var income = sourceDailyIncome(d);
+        var burn = hhfDaily + afShare + factoryDailyCost(d);
+        reserve = reserve + income - burn;
+        if (runOutDay === null && reserve < 0) runOutDay = d;
+        series.push({ x: d, y: Math.round(reserve) });
+      }
+      return { series: series, runOutDay: runOutDay };
+    }
+
+    function renderBudgetChart() {
+      var container = document.getElementById('budget-chart');
+      if (!container || !window.LWSLineChart) {
+        // line-chart.js is deferred — try again shortly
+        if (container) setTimeout(renderBudgetChart, 200);
+        return;
+      }
+      var opts = {
+        furnaceLevel: parseInt(document.getElementById('s-level').value, 10) || 20,
+        initialStock: parseInt(document.getElementById('s-stock').value, 10) || 100000,
+        afLevel: parseInt(document.getElementById('af-level').value, 10) || 10,
+        afHours: parseFloat(document.getElementById('af-hours').value) || 4,
+        hhfHours: parseFloat(document.getElementById('hhf-hours').value) || 6,
+        hhfODHours: parseFloat(document.getElementById('hhf-od-hours').value) || 1,
+      };
+      var proj = projectCoalReserve(opts);
+      LWSLineChart.render(container, {
+        title: LWSI18N.t('budgetChartTitle'),
+        labelX: LWSI18N.t('budgetChartX'),
+        labelY: LWSI18N.t('budgetChartY'),
+        series: proj.series,
+        height: 300,
+      });
+
+      // Alarm line beneath the chart
+      var alarm = document.getElementById('budget-alarm');
+      if (proj.runOutDay) {
+        alarm.textContent = '⚠ ' + LWSI18N.t('budgetRunOutPrefix') + ' ' + proj.runOutDay + ' — ' + LWSI18N.t('budgetRunOutSuffix');
+        alarm.style.color = 'var(--status-red)';
+      } else {
+        var last = proj.series[proj.series.length - 1].y;
+        alarm.textContent = '✓ ' + LWSI18N.t('budgetSurplusPrefix') + ' ' + last.toLocaleString() + ' ' + LWSI18N.t('budgetSurplusSuffix');
+        alarm.style.color = 'var(--status-green)';
+      }
+    }
+
+    // Wire input changes to chart re-render
+    ['s-level', 's-stock', 'af-level', 'af-hours', 'hhf-hours', 'hhf-od-hours'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', renderBudgetChart);
+    });
+
+    // Re-render source & alloy tables + chart when language toggles.
+    window.addEventListener('lws:lang-changed', function () {
+      renderSourceTable();
+      renderAlloySchedule();
+      renderBudgetChart();
+    });
+
+    // Initial render (chart waits on line-chart.js to load).
+    renderSourceTable();
+    renderAlloySchedule();
+    setTimeout(renderBudgetChart, 400);
   })();
   </script>
   <script src="https://chat.r5tools.io/widget.js" defer></script>
