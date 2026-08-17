@@ -331,9 +331,12 @@
         var rows = d.members.map(function (m) {
           var notes = m.notes || '';
           if (m.x != null && notes.indexOf('@') === -1) notes = (notes + ' @' + m.x + ',' + m.y).trim();
+          var hq = m.hq == null ? '' : String(m.hq);
+          var pw = m.power == null ? '' : String(m.power);
+          // Emit every key alias tools read (some use hq_level/total_power).
           return { rank: String(m.rank || 'R1').toUpperCase(), name: String(m.name || ''),
-                   hq: m.hq == null ? '' : String(m.hq),
-                   power: m.power == null ? '' : String(m.power), notes: notes };
+                   hq: hq, hq_level: hq, power: pw, total_power: pw, notes: notes,
+                   x: m.x, y: m.y };
         });
         var name = me.alliance + ' · WZ ' + me.warzone;
         if (typeof window.__lwsRosterLoaded === 'function') window.__lwsRosterLoaded(rows, name);
