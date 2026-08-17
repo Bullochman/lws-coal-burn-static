@@ -1,8 +1,5 @@
 (function () {
-  var ROSTERS = [
-    { url: 'data/moonpetal-circle-94.csv', label: 'The Moonpetal Circle (94) — demo', count: 94, isDefault: true },
-    { url: 'data/silverwing-coven-99.csv', label: 'Silverwing Coven (99) — demo', count: 99 }
-  ];
+  var ROSTERS = [];  // demo/sample presets removed — tools start empty
 
   // ---- i18n (mirrors the shared `lws_lang` preference set by sibling tools)
   function _getLang() {
@@ -54,6 +51,7 @@
   }
 
   function render(container) {
+    if (!ROSTERS.length) return;  // nothing to pick — skip the picker UI
     var wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0';
     var label = document.createElement('label');
@@ -290,16 +288,76 @@
     return true;
   }
 
+  // ---- Canonical roster auto-import (LW Atlas + your upload, merged) --------
+  // Every tool auto-loads YOUR ONE alliance's roster. Identity is set once
+  // (?warzone=&alliance= from the hub, remembered in shared localStorage) and
+  // every tool on this domain reads it. No demo, no dropdown, no re-upload.
+  var CANON_ORIGIN = 'https://access-codes.r5tools.io';
+  function _myCode() {
+    try {
+      if (window.LWSAccessCodes && typeof LWSAccessCodes.code === 'function') {
+        var c = LWSAccessCodes.code(); if (c) return c;
+      }
+    } catch (e) {}
+    try { return localStorage.getItem('lws_unlock_code') || ''; } catch (e) { return ''; }
+  }
+  function _myAlliance() {
+    try {
+      var q = new URLSearchParams(window.location.search);
+      var wz = q.get('warzone'), tag = q.get('alliance');
+      if (wz && tag) {
+        localStorage.setItem('lws_my_warzone', wz);
+        localStorage.setItem('lws_my_alliance', tag);
+      }
+      wz = wz || localStorage.getItem('lws_my_warzone');
+      tag = tag || localStorage.getItem('lws_my_alliance');
+      if (wz && tag) return { warzone: wz, alliance: tag };
+    } catch (e) {}
+    return null;
+  }
+  function tryLoadCanonical() {
+    var me = _myAlliance();
+    if (!me) return false;
+    var code = _myCode();
+    var status = document.getElementById('lws-roster-status');
+    if (status) status.textContent = 'loading your roster…';
+    var url = CANON_ORIGIN + '/api/warzone/' + encodeURIComponent(me.warzone) +
+      '/alliance/' + encodeURIComponent(me.alliance) + '/canonical-roster' +
+      (code ? '?code=' + encodeURIComponent(code) : '');
+    fetch(url, { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.members || !d.members.length) { if (status) status.textContent = ''; return; }
+        var rows = d.members.map(function (m) {
+          var notes = m.notes || '';
+          if (m.x != null && notes.indexOf('@') === -1) notes = (notes + ' @' + m.x + ',' + m.y).trim();
+          return { rank: String(m.rank || 'R1').toUpperCase(), name: String(m.name || ''),
+                   hq: m.hq == null ? '' : String(m.hq),
+                   power: m.power == null ? '' : String(m.power), notes: notes };
+        });
+        var name = me.alliance + ' · WZ ' + me.warzone;
+        if (typeof window.__lwsRosterLoaded === 'function') window.__lwsRosterLoaded(rows, name);
+        window.dispatchEvent(new CustomEvent('lws:roster-loaded', { detail: { rows: rows, name: name, source: 'canonical' } }));
+        try {
+          var banner = document.createElement('div');
+          banner.style.cssText = 'padding:10px 14px;margin:8px 0;background:rgba(138,224,163,0.10);border:1px solid rgba(138,224,163,0.35);border-radius:6px;color:#8ae0a3;font-size:13px';
+          banner.innerHTML = '\uD83D\uDEF0\uFE0F Auto-loaded <strong>' + name + '</strong> \u2014 ' + rows.length + ' members'
+            + (d.has_upload ? ' (LW Atlas + your upload)' : ' (LW Atlas)')
+            + (d.upload_updated_at ? ' \u00B7 as of ' + String(d.upload_updated_at).slice(0, 10) : '');
+          document.body.insertBefore(banner, document.body.firstChild);
+        } catch (e) {}
+      })
+      .catch(function () { if (status) status.textContent = ''; });
+    return true;
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     var mount = document.getElementById('lws-roster-picker');
     if (mount) render(mount);
-    // Priority order: live roster (hash/localStorage) > hash CSV > autoload
-    // marker > picker mounted → default roster.
+    // Priority: your canonical roster (LW Atlas + upload) > legacy live roster
+    // > hash CSV. No demo fallback.
+    if (tryLoadCanonical()) return;
     if (tryLoadFromLiveRoster()) return;
     if (tryLoadFromHash()) return;
-    var auto = document.querySelector('[data-lws-roster-autoload]');
-    if (auto || document.getElementById('lws-roster-picker')) {
-      load(ROSTERS[0].url);
-    }
   });
 })();
