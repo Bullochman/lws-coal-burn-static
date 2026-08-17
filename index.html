@@ -537,6 +537,27 @@
         .catch(function () { alert(LWSI18N.t('errNetwork')); });
     });
 
+    // Auto-load the canonical roster (LW Atlas + upload). Coal needs
+    // furnace_level + coal_stock columns — default furnace_level to HQ level
+    // and coal_stock to 0 so the batch runs; the user can refine per member.
+    window.addEventListener('lws:roster-loaded', function (e) {
+      if (!e.detail || !e.detail.rows || !e.detail.rows.length) return;
+      var lines = ['name,rank,hq_level,total_power,notes,furnace_level,coal_stock'];
+      e.detail.rows.forEach(function (m) {
+        var hq = m.hq_level || m.hq || '';
+        lines.push([
+          String(m.name || '').replace(/,/g, ' '),
+          String(m.rank || ''),
+          hq,
+          String(m.total_power || m.power || ''),
+          String(m.notes || '').replace(/,/g, ' '),
+          hq, '0'
+        ].join(','));
+      });
+      var bi = document.getElementById('b-input');
+      if (bi) { bi.value = lines.join('\n'); var run = document.getElementById('b-run'); if (run) run.click(); }
+    });
+
     function parseCsv(text) {
       // Minimal CSV parse: comma-split, no quoted-field support (v0.1).
       // Same column contract as Alliance_Hive_Grid_Manager plus furnace_level + coal_stock.
